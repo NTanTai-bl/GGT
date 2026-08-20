@@ -1,0 +1,121 @@
+:root {
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1f232c;
+  --border: #2a2f3a;
+  --ink: #e7ebf1;
+  --muted: #8a93a3;
+  --accent: #34c3b1;
+  --crit: #f0685f;
+  --high: #ff9d5c;
+  --med: #e0b23f;
+  --low: #74c281;
+  --info: #8a93a3;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); }
+a { color: var(--accent); text-decoration: none; }
+
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar h1 { font-size: 15px; margin: 0 0 20px; }
+.sidebar a {
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.sidebar a.active, .sidebar a:hover { background: var(--surface-2); color: var(--accent); }
+.sidebar .logout { margin-top: auto; color: var(--muted); cursor: pointer; }
+
+.content { flex: 1; padding: 32px 40px; max-width: 1100px; }
+h2 { font-size: 22px; margin: 0 0 20px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.grid { display: grid; gap: 16px; }
+.grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+.stat-value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+tr:hover td { background: var(--surface-2); }
+
+.chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.chip.CRITICAL { background: #351f1e; color: var(--crit); }
+.chip.HIGH { background: #3a2a1a; color: var(--high); }
+.chip.MEDIUM { background: #362c14; color: var(--med); }
+.chip.LOW { background: #1c2f1e; color: var(--low); }
+.chip.INFO { background: #232c37; color: var(--info); }
+.chip.QUEUED, .chip.OPEN { background: #232c37; color: var(--info); }
+.chip.RUNNING { background: #16302c; color: var(--accent); }
+.chip.COMPLETED, .chip.FIXED { background: #1c2f1e; color: var(--low); }
+.chip.FAILED { background: #351f1e; color: var(--crit); }
+.chip.CANCELLED, .chip.FALSE_POSITIVE { background: #232c37; color: var(--muted); }
+.chip.ACKNOWLEDGED { background: #362c14; color: var(--med); }
+
+form { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
+label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+input, select, textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+textarea { resize: vertical; min-height: 70px; }
+.checkbox-row { flex-direction: row; align-items: flex-start; gap: 8px; }
+.checkbox-row input { width: auto; margin-top: 3px; }
+
+button {
+  background: var(--accent);
+  color: #08211d;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  width: fit-content;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); }
+
+.error-banner {
+  background: #351f1e;
+  color: var(--crit);
+  border: 1px solid var(--crit);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+
+.filters { display: flex; gap: 10px; margin-bottom: 16px; }
+.filters select { width: auto; }
+
+.finding-detail { display: flex; flex-direction: column; gap: 10px; }
+.finding-detail dt { color: var(--muted); font-size: 12px; text-transform: uppercase; margin-top: 10px; }
+.finding-detail dd { margin: 4px 0 0; white-space: pre-wrap; }
+
+.login-page { display: flex; align-items: center; justify-content: center; height: 100vh; }

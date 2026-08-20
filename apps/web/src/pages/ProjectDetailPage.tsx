@@ -1,0 +1,178 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useParams } from "react-router-dom";
+import { api, type PentestRun, type Project, type Target } from "../api/client";
+
+export function ProjectDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const [project, setProject] = useState<(Project & { targets: Target[] }) | null>(null);
+  const [runs, setRuns] = useState<PentestRun[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    if (!id) return;
+    const [p, allRuns] = await Promise.all([api.getProject(id), api.listPentests()]);
+    setProject(p);
+    setRuns(allRuns.filter((r) => r.projectId === id).slice(0, 10));
+  }
+
+  useEffect(() => {
+    refresh();
+  }, [id]);
+
+  if (!project) return <p>Loading...</p>;
+
+  return (
+    <div>
+      <h2>{project.name}</h2>
+      {project.description && <p style={{ color: "var(--muted)" }}>{project.description}</p>}
+
+      <div className="grid cols-2" style={{ alignItems: "start" }}>
+        <div>
+          <h3>Targets</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>Env</th>
+                <th>Authorized</th>
+              </tr>
+            </thead>
+            <tbody>
+              {project.targets.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.target}</td>
+                  <td>{t.environment}</td>
+                  <td>{t.authorizationConfirmed ? "Yes" : "No"}</td>
+                </tr>
+              ))}
+              {project.targets.length === 0 && (
+                <tr>
+                  <td colSpan={3} style={{ color: "var(--muted)" }}>
+                    No targets yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          <h3>Recent runs</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Scan mode</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className={`chip ${r.status}`}>{r.status}</span>
+                  </td>
+                  <td>{r.scanMode}</td>
+                  <td>
+                    <Link to={`/pentests/${r.id}`}>View</Link>
+                  </td>
+                </tr>
+              ))}
+              {runs.length === 0 && (
+                <tr>
+                  <td colSpan={3} style={{ color: "var(--muted)" }}>
+                    No runs yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <Link to={`/pentests/new?projectId=${project.id}`}>
+            <button style={{ marginTop: 12 }}>Start pentest</button>
+          </Link>
+        </div>
+
+        <AddTargetForm projectId={project.id} onCreated={refresh} error={error} setError={setError} />
+      </div>
+    </div>
+  );
+}
+
+function AddTargetForm({
+  projectId,
+  onCreated,
+  error,
+  setError,
+}: {
+  projectId: string;
+  onCreated: () => void;
+  error: string | null;
+  setError: (e: string | null) => void;
+}) {
+  const [type, setType] = useState<"URL" | "REPOSITORY">("URL");
+  const [target, setTarget] = useState("");
+  const [environment, setEnvironment] = useState<"DEV" | "STAGING" | "PRODUCTION">("STAGING");
+  const [authorized, setAuthorized] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!authorized) {
+      setError("You must confirm authorization before adding a target.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.createTarget(projectId, {
+        type,
+        target,
+        environment,
+        authorizationConfirmed: true,
+      });
+      setTarget("");
+      setAuthorized(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add target");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>Add target</h3>
+      {error && <div className="error-banner">{error}</div>}
+      <form onSubmit={handleSubmit}>
+        <label>
+          Type
+          <select value={type} onChange={(e) => setType(e.target.value as typeof type)}>
+            <option value="URL">URL</option>
+            <option value="REPOSITORY">Repository</option>
+          </select>
+        </label>
+        <label>
+          {type === "URL" ? "Target URL" : "Repository URL"}
+          <input value={target} onChange={(e) => setTarget(e.target.value)} required />
+        </label>
+        <label>
+          Environment
+          <select value={environment} onChange={(e) => setEnvironment(e.target.value as typeof environment)}>
+            <option value="DEV">Dev</option>
+            <option value="STAGING">Staging</option>
+            <option value="PRODUCTION">Production</option>
+          </select>
+        </label>
+        <label className="checkbox-row">
+          <input type="checkbox" checked={authorized} onChange={(e) => setAuthorized(e.target.checked)} />
+          <span>
+            I confirm that I own this application or have explicit authorization to perform security
+            testing against it.
+          </span>
+        </label>
+        <button type="submit" disabled={submitting || !authorized}>
+          {submitting ? "Adding..." : "Add target"}
+        </button>
+      </form>
+    </div>
+  );
+}

@@ -1,7 +1,8 @@
-import { Finding, Run, Target } from "@pentest/database";
-import type { UpdateFindingInput } from "@pentest/shared";
+import { Finding, recordAuditLog, Run } from "@pentest/database";
+import { can, type FindingStatus, type UpdateFindingInput, type UserRole } from "@pentest/shared";
 import { HttpError } from "../middleware/errorHandler";
 import { getPentestOrThrow } from "./pentest.service";
+import type { AuthenticatedUser } from "../middleware/auth";
 
 export async function listFindingsForRun(runId: string): Promise<Finding[]> {
   await getPentestOrThrow(runId);
@@ -16,32 +17,67 @@ export async function getFindingOrThrow(findingId: string): Promise<Finding> {
   return finding;
 }
 
-export async function updateFinding(findingId: string, input: UpdateFindingInput): Promise<Finding> {
+export async function updateFinding(
+  findingId: string,
+  input: UpdateFindingInput,
+  user: AuthenticatedUser
+): Promise<Finding> {
   const finding = await getFindingOrThrow(findingId);
-  if (input.status) {
-    await finding.update({ status: input.status });
+  if (!input.status) {
+    return finding;
   }
+
+  if (!canSetFindingStatus(user.role, input.status)) {
+    throw new HttpError(403, `Role ${user.role} cannot set a finding's status to ${input.status}`);
+  }
+
+  const previousStatus = finding.status;
+  await finding.update({ status: input.status });
+  await recordAuditLog({
+    actorId: user.id,
+    action: mapStatusToAuditAction(input.status),
+    entityType: "finding",
+    entityId: findingId,
+    metadata: { from: previousStatus, to: input.status },
+  });
   return finding;
+}
+
+/** Spec §25: SECURITY/ADMIN can set any status; DEVELOPER only FIXED_PENDING_RETEST. */
+function canSetFindingStatus(role: UserRole, status: FindingStatus): boolean {
+  if (can(role, "FINDING_UPDATE_ANY_STATUS")) return true;
+  return status === "FIXED_PENDING_RETEST" && can(role, "FINDING_MARK_FIXED_PENDING_RETEST");
+}
+
+/** Spec §26 only names three finding-related audit actions; VERIFIED_FIXED reuses FINDING_MARKED_FIXED. */
+function mapStatusToAuditAction(status: FindingStatus): string {
+  switch (status) {
+    case "CONFIRMED":
+      return "FINDING_CONFIRMED";
+    case "FALSE_POSITIVE":
+      return "FINDING_FALSE_POSITIVE";
+    case "FIXED_PENDING_RETEST":
+    case "VERIFIED_FIXED":
+      return "FINDING_MARKED_FIXED";
+    default:
+      return "FINDING_STATUS_CHANGED";
+  }
 }
 
 export interface PentestReport {
   run: Run;
-  target: Target | null;
   findings: Finding[];
   summary: Record<string, number>;
 }
 
 export async function buildReport(runId: string): Promise<PentestReport> {
-  const run = await getPentestOrThrow(runId);
-  const [target, findings] = await Promise.all([
-    Target.findByPk(run.targetId),
-    Finding.findAll({ where: { runId } }),
-  ]);
+  const run = await getPentestOrThrow(runId); // already includes `targets`
+  const findings = await Finding.findAll({ where: { runId } });
 
   const summary: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
   for (const finding of findings) {
     summary[finding.severity] = (summary[finding.severity] ?? 0) + 1;
   }
 
-  return { run, target, findings, summary };
+  return { run, findings, summary };
 }

@@ -39,4 +39,37 @@ describe("normalizeFinding", () => {
     const b = normalizeFinding({ title: "IDOR", endpoint: "/y" });
     expect(a.fingerprint).not.toBe(b.fingerprint);
   });
+
+  it("extracts description, source location and CWE from a SARIF-shaped result", () => {
+    const result = normalizeFinding({
+      ruleId: "js/sql-injection",
+      level: "error",
+      message: { text: "User input flows into a SQL query without sanitization." },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: "src/db/query.ts" },
+            region: { startLine: 42 },
+          },
+        },
+      ],
+      properties: { tags: ["security", "CWE-89"] },
+    });
+    expect(result.title).toBe("js/sql-injection");
+    expect(result.severity).toBe("HIGH");
+    expect(result.description).toBe("User input flows into a SQL query without sanitization.");
+    expect(result.sourceFile).toBe("src/db/query.ts");
+    expect(result.sourceLine).toBe(42);
+    expect(result.cwe).toBe("CWE-89");
+  });
+
+  it("prefers an explicit field over the SARIF-derived one when both are present", () => {
+    const result = normalizeFinding({
+      title: "Explicit title wins",
+      description: "Explicit description",
+      message: { text: "SARIF description should be ignored" },
+    });
+    expect(result.title).toBe("Explicit title wins");
+    expect(result.description).toBe("Explicit description");
+  });
 });

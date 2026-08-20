@@ -28,7 +28,7 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <div className="card" style={{ width: 360 }}>
-        <h2>AI Pentest Platform</h2>
+        <h2>GGT</h2>
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleSubmit}>
           <label>

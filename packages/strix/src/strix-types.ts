@@ -1,16 +1,35 @@
-import type { ScanMode } from "@pentest/shared";
+import type { ScanMode, ScanType } from "@pentest/shared";
 
 export interface LlmConfig {
+  /** e.g. "bedrock/anthropic.claude-..." in prod, "openrouter/free" for local dev. */
   strixLlm: string;
+  /** Must stay undefined for Bedrock — auth is via the EC2/IAM role, never a key. */
   apiKey?: string | undefined;
   apiBase?: string | undefined;
 }
 
+export type StrixTargetInput =
+  | { type: "SOURCE"; path: string } // resolved local workspace path, never a raw frontend value
+  | { type: "WEB" | "API"; url: string };
+
 export interface PentestInput {
   runId: string;
-  target: string;
+  scanType: ScanType;
   scanMode: ScanMode;
+  targets: StrixTargetInput[];
   instruction?: string | undefined;
+  /**
+   * Extra env vars merged into the child process — e.g. a path to a
+   * short-lived credential file the worker wrote for an AUTHENTICATED scan.
+   * Never put a credential VALUE directly here as a CLI arg or in `targets`.
+   */
+  extraEnv?: Record<string, string> | undefined;
+  /**
+   * The run's workspace directory (spec §28: <STRIX_WORKSPACE_ROOT>/<runId>/).
+   * When set, result collection looks here for structured output (run.json,
+   * vulnerabilities.json, SARIF) before falling back to scraping stdout.
+   */
+  workspaceDir?: string | undefined;
 }
 
 export interface PentestEngineResult {
@@ -19,9 +38,9 @@ export interface PentestEngineResult {
   stdout: string;
   stderr: string;
   durationMs: number;
-  /** Unparsed findings straight off stdout — normalize before persisting. */
+  /** Unparsed findings straight off stdout/result files — normalize before persisting. */
   rawFindings: unknown[];
-  /** True if rawFindings could not be confidently parsed from stdout. */
+  /** True if rawFindings could not be confidently parsed. */
   parseWarning: boolean;
 }
 
@@ -33,8 +52,8 @@ export interface RawStrixFinding {
   [key: string]: unknown;
 }
 
-/** Engine abstraction — nothing outside packages/strix should import child_process for pentests. */
+/** Engine abstraction — nothing outside packages/strix should invoke the Strix CLI directly. */
 export interface PentestEngine {
   run(input: PentestInput): Promise<PentestEngineResult>;
-  cancel(strixRunId: string): Promise<void>;
+  cancel(runId: string): Promise<void>;
 }

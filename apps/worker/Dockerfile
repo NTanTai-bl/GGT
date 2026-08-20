@@ -36,6 +36,10 @@ RUN python3 -m venv /opt/strix-venv \
 ENV PATH="/opt/strix-venv/bin:${PATH}"
 ENV STRIX_BIN="/opt/strix-venv/bin/strix"
 
+# Per-run temp workspaces (source snapshots, staged credentials) live under
+# here and are deleted after each run — see apps/worker/src/workspace.ts.
+RUN mkdir -p /opt/ggt/workspaces
+
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/package.json ./package.json
 COPY --from=build /repo/packages ./packages

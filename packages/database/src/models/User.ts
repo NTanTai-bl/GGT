@@ -6,6 +6,7 @@ import {
   type InferCreationAttributes,
   type Sequelize,
 } from "sequelize";
+import { USER_ROLES, type UserRole } from "@pentest/shared";
 
 type Timestamps = { omit: "createdAt" | "updatedAt" };
 
@@ -14,6 +15,7 @@ export class User extends Model<InferAttributes<User, Timestamps>, InferCreation
   declare email: string;
   declare passwordHash: string;
   declare displayName: string;
+  declare role: CreationOptional<UserRole>;
   declare readonly createdAt: CreationOptional<Date>;
   declare readonly updatedAt: CreationOptional<Date>;
 }
@@ -25,6 +27,7 @@ export function initUserModel(sequelize: Sequelize): typeof User {
       email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
       passwordHash: { type: DataTypes.STRING(255), allowNull: false },
       displayName: { type: DataTypes.STRING(200), allowNull: false },
+      role: { type: DataTypes.ENUM(...USER_ROLES), allowNull: false, defaultValue: "VIEWER" },
     },
     { sequelize, tableName: "users", underscored: true }
   );

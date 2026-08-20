@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Finding, type PentestRun, type Project } from "../api/client";
 
+const ACTIVE_STATUSES = ["QUEUED", "PREPARING", "RUNNING", "PROCESSING_RESULTS"];
+
 export function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [runs, setRuns] = useState<PentestRun[]>([]);
@@ -27,23 +29,31 @@ export function Dashboard() {
     })();
   }, []);
 
-  const runningCount = runs.filter((r) => r.status === "QUEUED" || r.status === "RUNNING").length;
+  const runningCount = runs.filter((r) => ACTIVE_STATUSES.includes(r.status)).length;
+  const completedCount = runs.filter((r) => r.status === "COMPLETED").length;
+  const failedCount = runs.filter((r) => r.status === "FAILED").length;
   const recentRuns = runs.slice(0, 8);
 
   return (
     <div>
       <h2>Dashboard</h2>
-      <div className="grid cols-4" style={{ marginBottom: 28 }}>
+      <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Projects" value={projects.length} />
         <Stat label="Running pentests" value={runningCount} />
+        <Stat label="Completed pentests" value={completedCount} />
+        <Stat label="Failed pentests" value={failedCount} accent="var(--crit)" />
+      </div>
+      <div className="grid cols-4" style={{ marginBottom: 28 }}>
         <Stat label="Critical findings" value={severityCounts.CRITICAL ?? 0} accent="var(--crit)" />
         <Stat label="High findings" value={severityCounts.HIGH ?? 0} accent="var(--high)" />
+        <Stat label="Medium findings" value={severityCounts.MEDIUM ?? 0} accent="var(--med)" />
+        <Stat label="Low findings" value={severityCounts.LOW ?? 0} accent="var(--low)" />
       </div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -18 }}>
         Finding counts are based on the 5 most recently completed runs.
       </p>
 
-      <h2>Recent runs</h2>
+      <h2>Recent Pentest Runs</h2>
       {loading ? (
         <p>Loading...</p>
       ) : recentRuns.length === 0 ? (
@@ -54,7 +64,8 @@ export function Dashboard() {
             <tr>
               <th>Started</th>
               <th>Status</th>
-              <th>Scan mode</th>
+              <th>Scan type</th>
+              <th>Depth</th>
               <th></th>
             </tr>
           </thead>
@@ -65,6 +76,7 @@ export function Dashboard() {
                 <td>
                   <span className={`chip ${run.status}`}>{run.status}</span>
                 </td>
+                <td>{run.scanType}</td>
                 <td>{run.scanMode}</td>
                 <td>
                   <Link to={`/pentests/${run.id}`}>View</Link>

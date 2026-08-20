@@ -66,11 +66,11 @@ tr:hover td { background: var(--surface-2); }
 .chip.LOW { background: #1c2f1e; color: var(--low); }
 .chip.INFO { background: #232c37; color: var(--info); }
 .chip.QUEUED, .chip.OPEN { background: #232c37; color: var(--info); }
-.chip.RUNNING { background: #16302c; color: var(--accent); }
-.chip.COMPLETED, .chip.FIXED { background: #1c2f1e; color: var(--low); }
+.chip.PREPARING, .chip.RUNNING, .chip.PROCESSING_RESULTS { background: #16302c; color: var(--accent); }
+.chip.COMPLETED, .chip.VERIFIED_FIXED { background: #1c2f1e; color: var(--low); }
 .chip.FAILED { background: #351f1e; color: var(--crit); }
-.chip.CANCELLED, .chip.FALSE_POSITIVE { background: #232c37; color: var(--muted); }
-.chip.ACKNOWLEDGED { background: #362c14; color: var(--med); }
+.chip.CANCELLED, .chip.FALSE_POSITIVE, .chip.ACCEPTED_RISK { background: #232c37; color: var(--muted); }
+.chip.CONFIRMED, .chip.FIXING, .chip.FIXED_PENDING_RETEST { background: #362c14; color: var(--med); }
 
 form { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
 label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }

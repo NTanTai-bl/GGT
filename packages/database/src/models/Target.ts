@@ -22,6 +22,9 @@ export class Target extends Model<
   declare authorizationConfirmed: CreationOptional<boolean>;
   declare authorizationConfirmedBy: string | null;
   declare authorizationConfirmedAt: Date | null;
+  /** SOURCE targets only — metadata for what was actually scanned (spec §30). */
+  declare branch: string | null;
+  declare commitSha: string | null;
   declare readonly createdAt: CreationOptional<Date>;
   declare readonly updatedAt: CreationOptional<Date>;
 }
@@ -37,6 +40,8 @@ export function initTargetModel(sequelize: Sequelize): typeof Target {
       authorizationConfirmed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       authorizationConfirmedBy: { type: DataTypes.UUID, allowNull: true },
       authorizationConfirmedAt: { type: DataTypes.DATE, allowNull: true },
+      branch: { type: DataTypes.STRING(200), allowNull: true },
+      commitSha: { type: DataTypes.STRING(100), allowNull: true },
     },
     { sequelize, tableName: "pentest_targets", underscored: true }
   );

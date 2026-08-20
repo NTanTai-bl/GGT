@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
+import { can } from "@pentest/shared";
 import { useAuth } from "./auth/AuthContext";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -8,15 +9,15 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="layout">
       <nav className="sidebar">
-        <h1>AI Pentest Platform</h1>
+        <h1>GGT</h1>
         <NavLink to="/" end>
           Dashboard
         </NavLink>
         <NavLink to="/projects">Projects</NavLink>
-        <NavLink to="/pentests/new">Start pentest</NavLink>
+        {user && can(user.role, "PENTEST_CREATE") && <NavLink to="/pentests/new">Start pentest</NavLink>}
         {user && (
           <span className="logout" onClick={logout}>
-            Sign out ({user.email})
+            Sign out ({user.email} &middot; {user.role})
           </span>
         )}
       </nav>

@@ -1,4 +1,7 @@
-import { parseStrixOutput } from "../strix-result-parser";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { collectStrixResults, parseStrixOutput } from "../strix-result-parser";
 
 describe("parseStrixOutput", () => {
   it("parses a bare JSON array", () => {
@@ -47,5 +50,39 @@ describe("parseStrixOutput", () => {
     const result = parseStrixOutput("   ");
     expect(result.findings).toEqual([]);
     expect(result.parseWarning).toBe(false);
+  });
+});
+
+describe("collectStrixResults", () => {
+  let workspaceDir: string;
+
+  beforeEach(async () => {
+    workspaceDir = await mkdtemp(path.join(tmpdir(), "strix-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(workspaceDir, { recursive: true, force: true });
+  });
+
+  it("prefers a result file under strix_runs/<run-name>/ over stdout", async () => {
+    const runDir = path.join(workspaceDir, "strix_runs", "some-run-name");
+    await mkdir(runDir, { recursive: true });
+    await writeFile(path.join(runDir, "vulnerabilities.json"), JSON.stringify([{ title: "From file" }]));
+
+    const result = await collectStrixResults("[]", workspaceDir);
+    expect(result.findings).toEqual([{ title: "From file" }]);
+    expect(result.source).toBe(path.join("strix_runs", "some-run-name", "vulnerabilities.json"));
+  });
+
+  it("falls back to stdout when no strix_runs directory exists", async () => {
+    const result = await collectStrixResults(JSON.stringify([{ title: "From stdout" }]), workspaceDir);
+    expect(result.findings).toEqual([{ title: "From stdout" }]);
+    expect(result.source).toBe("stdout");
+  });
+
+  it("falls back to stdout when strix_runs exists but has no matching files", async () => {
+    await mkdir(path.join(workspaceDir, "strix_runs", "empty-run"), { recursive: true });
+    const result = await collectStrixResults(JSON.stringify([{ title: "From stdout" }]), workspaceDir);
+    expect(result.source).toBe("stdout");
   });
 });

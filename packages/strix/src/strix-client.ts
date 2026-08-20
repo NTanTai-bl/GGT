@@ -12,6 +12,14 @@ export interface StrixExecuteOptions {
   args: string[];
   env: NodeJS.ProcessEnv;
   timeoutMs: number;
+  /**
+   * Working directory for the spawned process. Strix writes its own
+   * `./strix_runs/<run-name>/` output relative to its cwd (confirmed by
+   * `strix --help`'s `--resume` description) — pass the run's workspace
+   * dir here so that output lands somewhere this codebase already tracks
+   * and cleans up, instead of the worker process's own cwd.
+   */
+  cwd?: string;
   /** Called with the spawned process so the caller can track it for cancellation. */
   onProcessStart?: (child: ChildProcess) => void;
 }
@@ -23,12 +31,13 @@ export interface StrixExecuteOptions {
  * additional shell commands.
  */
 export function executeStrix(options: StrixExecuteOptions): Promise<StrixExecution> {
-  const { binary, args, env, timeoutMs, onProcessStart } = options;
+  const { binary, args, env, timeoutMs, cwd, onProcessStart } = options;
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
     const child = spawn(binary, args, {
       env,
+      cwd,
       shell: false,
     });
     onProcessStart?.(child);

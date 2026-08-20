@@ -46,7 +46,7 @@ async function handleMessage(message: Message, engine: PentestEngine): Promise<v
   }
 
   try {
-    await processPentestRequested(parsed, engine);
+    await processPentestRequested(parsed.runId, engine);
     await deleteMessage(message.ReceiptHandle);
   } catch (err) {
     // Leave the message in the queue — it becomes visible again after the

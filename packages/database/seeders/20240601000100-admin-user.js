@@ -13,11 +13,19 @@ module.exports = {
     }
 
     const [existing] = await queryInterface.sequelize.query(
-      `SELECT id FROM users WHERE email = :email`,
+      `SELECT id, role FROM users WHERE email = :email`,
       { replacements: { email } }
     );
     if (existing.length > 0) {
-      return; // idempotent — running the seeder twice must not fail or duplicate
+      // Idempotent, but self-healing: a row created before the `role`
+      // column existed (or before this seeder set it) would otherwise be
+      // stuck on the column's VIEWER default forever.
+      if (existing[0].role !== "ADMIN") {
+        await queryInterface.sequelize.query(`UPDATE users SET role = 'ADMIN' WHERE email = :email`, {
+          replacements: { email },
+        });
+      }
+      return;
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -27,6 +35,7 @@ module.exports = {
         email,
         password_hash: passwordHash,
         display_name: "Admin",
+        role: "ADMIN",
         created_at: new Date(),
         updated_at: new Date(),
       },

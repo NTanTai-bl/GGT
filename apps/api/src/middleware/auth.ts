@@ -1,10 +1,12 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import type { UserRole } from "@pentest/shared";
 import { env } from "../config/env";
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  role: UserRole;
 }
 
 declare global {
@@ -41,7 +43,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   }
   try {
     const payload = jwt.verify(token, env.SESSION_SECRET) as AuthenticatedUser;
-    req.user = { id: payload.id, email: payload.email };
+    req.user = { id: payload.id, email: payload.email, role: payload.role };
     next();
   } catch {
     res.status(401).json({ error: "Session expired or invalid" });

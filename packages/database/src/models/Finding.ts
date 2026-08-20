@@ -20,9 +20,12 @@ export class Finding extends Model<
   declare title: string;
   declare severity: Severity;
   declare category: string;
+  declare cwe: string | null;
   declare description: string;
   declare endpoint: string | null;
   declare method: string | null;
+  declare sourceFile: string | null;
+  declare sourceLine: number | null;
   declare evidence: string | null;
   declare poc: string | null;
   declare impact: string | null;
@@ -42,9 +45,12 @@ export function initFindingModel(sequelize: Sequelize): typeof Finding {
       title: { type: DataTypes.STRING(500), allowNull: false },
       severity: { type: DataTypes.ENUM(...SEVERITIES), allowNull: false },
       category: { type: DataTypes.STRING(200), allowNull: false },
+      cwe: { type: DataTypes.STRING(20), allowNull: true },
       description: { type: DataTypes.TEXT, allowNull: false },
       endpoint: { type: DataTypes.STRING(500), allowNull: true },
       method: { type: DataTypes.STRING(10), allowNull: true },
+      sourceFile: { type: DataTypes.STRING(500), allowNull: true },
+      sourceLine: { type: DataTypes.INTEGER, allowNull: true },
       evidence: { type: DataTypes.TEXT, allowNull: true },
       poc: { type: DataTypes.TEXT, allowNull: true },
       impact: { type: DataTypes.TEXT, allowNull: true },

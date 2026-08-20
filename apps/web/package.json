@@ -9,7 +9,7 @@
     "preview": "vite preview --host --port 5173",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "echo \"no unit tests for the web app in Phase 1\" && exit 0"
+    "test": "echo \"no unit tests for the web app yet\" && exit 0"
   },
   "dependencies": {
     "@pentest/shared": "*",

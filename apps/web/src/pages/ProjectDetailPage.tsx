@@ -174,8 +174,13 @@ function AddTargetForm({
           </select>
         </label>
         <label>
-          {type === "SOURCE" ? "Source (s3://bucket/key.tar.gz)" : `${type} target URL`}
-          <input value={target} onChange={(e) => setTarget(e.target.value)} required />
+          {type === "SOURCE" ? "Source repository or S3 archive" : `${type} target URL`}
+          <input
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder={type === "SOURCE" ? "https://github.com/org/repo or s3://bucket/key.tar.gz" : undefined}
+            required
+          />
         </label>
         {type === "SOURCE" && (
           <>

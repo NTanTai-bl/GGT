@@ -51,4 +51,29 @@ describe("executeStrix", () => {
     expect(result.stderr).toBe("warn");
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
+
+  it("streams stdout and stderr through optional callbacks while retaining the captured output", async () => {
+    const child = fakeChild();
+    (spawn as jest.Mock).mockReturnValue(child);
+    const onStdout = jest.fn();
+    const onStderr = jest.fn();
+
+    const promise = executeStrix({
+      binary: "strix",
+      args: [],
+      env: {},
+      timeoutMs: 5000,
+      onStdout,
+      onStderr,
+    });
+    child.stdout.emit("data", Buffer.from("progress\n"));
+    child.stderr.emit("data", Buffer.from("warning\n"));
+    child.emit("close", 0);
+
+    const result = await promise;
+    expect(onStdout).toHaveBeenCalledWith("progress\n");
+    expect(onStderr).toHaveBeenCalledWith("warning\n");
+    expect(result.stdout).toBe("progress\n");
+    expect(result.stderr).toBe("warning\n");
+  });
 });

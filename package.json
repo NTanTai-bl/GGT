@@ -15,7 +15,9 @@
     "dev:worker": "npm run dev --workspace apps/worker",
     "dev:web": "npm run dev --workspace apps/web",
     "db:migrate": "npm run db:migrate --workspace packages/database",
-    "db:seed": "npm run db:seed --workspace packages/database"
+    "db:seed": "npm run db:seed --workspace packages/database",
+    "local:rds:up": "docker compose -f docker-compose.local-rds.yml up -d --build",
+    "local:rds:down": "docker compose -f docker-compose.local-rds.yml down"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.16.1",

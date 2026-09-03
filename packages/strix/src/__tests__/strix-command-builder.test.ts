@@ -32,6 +32,18 @@ describe("buildStrixArgs", () => {
     ]);
   });
 
+  it("passes a validated GitHub repository URL directly to Strix", () => {
+    const repositoryUrl = "https://github.com/NTanTai-bl/GGT";
+    const args = buildStrixArgs({
+      runId: "r1",
+      scanType: "SOURCE_REVIEW",
+      scanMode: "STANDARD",
+      targets: [{ type: "SOURCE", repositoryUrl }],
+    });
+
+    expect(args).toEqual(["-n", "-t", repositoryUrl, "--scan-mode", "standard"]);
+  });
+
   it("keeps a hostile instruction as a single argv element instead of shell-interpolating it", () => {
     const hostile = "focus on auth; rm -rf / #";
     const args = buildStrixArgs({
@@ -45,6 +57,21 @@ describe("buildStrixArgs", () => {
     // reaches execve() as a single argv entry, never a shell string.
     expect(args).toContain(hostile);
     expect(args.filter((a) => a === hostile)).toHaveLength(1);
+  });
+
+  it("passes the per-run USD budget to Strix", () => {
+    const args = buildStrixArgs(
+      {
+        runId: "r1",
+        scanType: "BLACK_BOX",
+        scanMode: "QUICK",
+        targets: [{ type: "WEB", url: "https://staging.example.internal" }],
+      },
+      3
+    );
+
+    expect(args).toContain("--max-budget");
+    expect(args).toContain("3");
   });
 });
 

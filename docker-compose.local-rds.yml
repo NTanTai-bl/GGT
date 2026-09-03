@@ -1,0 +1,54 @@
+# Run LocalStack plus the Docker Worker/Strix locally, while using Amazon RDS.
+# Do not combine this file with docker-compose.yml: that file intentionally
+# starts a local PostgreSQL service and overrides DB_HOST to "postgres".
+services:
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      SERVICES: sqs,s3,secretsmanager
+      DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./infra/aws/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    env_file:
+      - .env.worker-docker
+    environment:
+      # Strix clones GitHub repositories below TMPDIR, then asks the host
+      # Docker daemon to bind-mount that clone into its sandbox. The path must
+      # therefore be identical and visible from both the worker and daemon.
+      TMPDIR: ${STRIX_DOCKER_SHARED_DIR:?Set STRIX_DOCKER_SHARED_DIR in .env}
+      # The Strix CLI runs inside the worker while its sandbox is a sibling
+      # container. Put both on one user-defined network so the worker can
+      # reach Caido by sandbox IP instead of host-only 127.0.0.1 ports.
+      STRIX_DOCKER_SANDBOX_NETWORK: ggt-strix
+    depends_on:
+      localstack:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs:/certs:ro
+      - type: bind
+        source: ./.strix-shared
+        target: ${STRIX_DOCKER_SHARED_DIR:?Set STRIX_DOCKER_SHARED_DIR in .env}
+        bind:
+          create_host_path: true
+    networks:
+      - default
+      - strix
+
+networks:
+  strix:
+    name: ggt-strix

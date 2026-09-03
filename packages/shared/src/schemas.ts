@@ -7,6 +7,7 @@ import {
   SCAN_TYPES,
   TARGET_TYPES,
 } from "./constants";
+import { isSupportedSourceTarget } from "./source-target";
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1, "name is required").max(200),
@@ -28,14 +29,24 @@ const authorizationConfirmedField = z.literal(true, {
   }),
 });
 
-export const createTargetSchema = z.object({
-  type: z.enum(TARGET_TYPES),
-  target: z.string().trim().min(1, "target is required").max(500),
-  environment: z.enum(ENVIRONMENTS),
-  branch: z.string().trim().max(200).optional(),
-  commitSha: z.string().trim().max(100).optional(),
-  authorizationConfirmed: authorizationConfirmedField,
-});
+export const createTargetSchema = z
+  .object({
+    type: z.enum(TARGET_TYPES),
+    target: z.string().trim().min(1, "target is required").max(500),
+    environment: z.enum(ENVIRONMENTS),
+    branch: z.string().trim().max(200).optional(),
+    commitSha: z.string().trim().max(100).optional(),
+    authorizationConfirmed: authorizationConfirmedField,
+  })
+  .superRefine((input, ctx) => {
+    if (input.type === "SOURCE" && !isSupportedSourceTarget(input.target)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["target"],
+        message: "SOURCE target must be s3://bucket/key.tar.gz or https://github.com/owner/repository",
+      });
+    }
+  });
 export type CreateTargetInput = z.infer<typeof createTargetSchema>;
 
 export const updateTargetSchema = z.object({

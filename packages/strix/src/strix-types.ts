@@ -9,7 +9,8 @@ export interface LlmConfig {
 }
 
 export type StrixTargetInput =
-  | { type: "SOURCE"; path: string } // resolved local workspace path, never a raw frontend value
+  | { type: "SOURCE"; path: string } // resolved local workspace path from an S3 source archive
+  | { type: "SOURCE"; repositoryUrl: string } // validated, explicitly authorized GitHub repository
   | { type: "WEB" | "API"; url: string };
 
 export interface PentestInput {
@@ -42,6 +43,33 @@ export interface PentestEngineResult {
   rawFindings: unknown[];
   /** True if rawFindings could not be confidently parsed. */
   parseWarning: boolean;
+}
+
+export interface StrixProcessStartEvent {
+  runId: string;
+  scanMode: ScanMode;
+  targetCount: number;
+  maxBudgetUsd: number;
+  timeoutMs: number;
+}
+
+export interface StrixOutputEvent {
+  runId: string;
+  stream: "stdout" | "stderr";
+  chunk: string;
+}
+
+export interface StrixProcessFinishEvent {
+  runId: string;
+  exitCode: number;
+  durationMs: number;
+}
+
+/** Optional, infrastructure-owned hooks for structured live process logs. */
+export interface StrixRunObserver {
+  onStart?(event: StrixProcessStartEvent): void;
+  onOutput?(event: StrixOutputEvent): void;
+  onFinish?(event: StrixProcessFinishEvent): void;
 }
 
 /**

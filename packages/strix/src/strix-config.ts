@@ -28,6 +28,22 @@ export function strixTimeoutMsFromEnv(): number {
   return Number(process.env.STRIX_TIMEOUT_MS || 30 * 60 * 1000);
 }
 
+/**
+ * Maximum estimated LLM spend for one Strix run. Keep a safe default so a
+ * missing environment variable never silently turns pentests into unlimited
+ * spend.
+ */
+export function strixMaxBudgetUsdFromEnv(): number {
+  const rawValue = process.env.STRIX_MAX_BUDGET_USD ?? "3";
+  const value = Number(rawValue);
+
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error("STRIX_MAX_BUDGET_USD must be a positive number");
+  }
+
+  return value;
+}
+
 /** Root directory the worker creates <runId> workspaces under (spec §28: never an arbitrary path). */
 export function strixWorkspaceRootFromEnv(): string {
   return process.env.STRIX_WORKSPACE_ROOT || "/opt/ggt/workspaces";

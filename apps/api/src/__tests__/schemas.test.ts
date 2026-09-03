@@ -41,6 +41,32 @@ describe("createTargetSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("accepts a canonical GitHub repository URL as a SOURCE target", () => {
+    const result = createTargetSchema.safeParse({
+      type: "SOURCE",
+      target: "https://github.com/NTanTai-bl/GGT",
+      environment: "STAGING",
+      branch: "main",
+      authorizationConfirmed: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    "https://example.com/org/repo",
+    "http://github.com/org/repo",
+    "https://github.com/org/repo/issues",
+    "not-a-repository",
+  ])("rejects unsupported SOURCE target %s", (target) => {
+    const result = createTargetSchema.safeParse({
+      type: "SOURCE",
+      target,
+      environment: "STAGING",
+      authorizationConfirmed: true,
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("createPentestSchema", () => {

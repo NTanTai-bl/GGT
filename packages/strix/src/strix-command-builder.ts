@@ -10,20 +10,31 @@ import type { LlmConfig, PentestInput } from "./strix-types";
  * `-t`/`--target <target>` for multi-target scans, `-m`/`--scan-mode
  * {quick,standard,deep}`, and `--instruction <text>` are all real flags
  * with exactly this shape. `--instruction-file <path>` also exists as an
- * alternative for long instructions but isn't needed here.
+ * alternative for long instructions but isn't needed here. Strix 1.2+
+ * supports `--max-budget <USD>` as a per-run estimated LLM spend cap.
  *
  * STILL UNCONFIRMED: exit code semantics (0/1/2) — `--help` doesn't
  * document these, so this remains the spec's own hedged assumption
  * ("if the installed version uses...").
  */
-export function buildStrixArgs(input: PentestInput): string[] {
+export function buildStrixArgs(input: PentestInput, maxBudgetUsd?: number): string[] {
   const args: string[] = ["-n"];
 
   for (const target of input.targets) {
-    args.push("-t", target.type === "SOURCE" ? target.path : target.url);
+    const targetValue =
+      target.type === "SOURCE"
+        ? "path" in target
+          ? target.path
+          : target.repositoryUrl
+        : target.url;
+    args.push("-t", targetValue);
   }
 
   args.push("--scan-mode", input.scanMode.toLowerCase());
+
+  if (maxBudgetUsd !== undefined) {
+    args.push("--max-budget", String(maxBudgetUsd));
+  }
 
   if (input.instruction) {
     args.push("--instruction", input.instruction);

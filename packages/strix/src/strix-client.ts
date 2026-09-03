@@ -22,6 +22,9 @@ export interface StrixExecuteOptions {
   cwd?: string;
   /** Called with the spawned process so the caller can track it for cancellation. */
   onProcessStart?: (child: ChildProcess) => void;
+  /** Optional live output hooks. Captured stdout/stderr are still returned in full. */
+  onStdout?: (chunk: string) => void;
+  onStderr?: (chunk: string) => void;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface StrixExecuteOptions {
  * additional shell commands.
  */
 export function executeStrix(options: StrixExecuteOptions): Promise<StrixExecution> {
-  const { binary, args, env, timeoutMs, cwd, onProcessStart } = options;
+  const { binary, args, env, timeoutMs, cwd, onProcessStart, onStdout, onStderr } = options;
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -52,10 +55,14 @@ export function executeStrix(options: StrixExecuteOptions): Promise<StrixExecuti
     }, timeoutMs);
 
     child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
+      const text = chunk.toString("utf8");
+      stdout += text;
+      onStdout?.(text);
     });
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
+      const text = chunk.toString("utf8");
+      stderr += text;
+      onStderr?.(text);
     });
 
     child.on("error", (err) => {

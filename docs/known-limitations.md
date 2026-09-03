@@ -21,14 +21,10 @@ from an actual installed binary and the code was updated to match:
   `--target` can be a URL, git repo, local directory, domain, IP, an
   OpenAPI/Postman spec, or a live Postman collection. GGT v1 only exercises
   the URL/local-directory cases; the rest are simply unused, not broken.
-- **Install method**: `--update`'s help text ("Self-updates the standalone
-  binary install; for pip/pipx/uv installs, prints the matching upgrade
-  command instead") confirms pip is one of Strix's real supported install
-  methods for Linux/EC2 — so `apps/worker/Dockerfile`'s `pip install` step
-  is the right *shape*. The exact PyPI package name (`strix-agent`) is
-  still a guess; the person who captured this `--help` output has it
-  installed as a standalone `strix.exe` on Windows, which doesn't confirm
-  the pip package name either.
+- **Install method**: the official Strix installation documentation requires
+  Python 3.12+ and documents `pip install strix-agent`. The Worker image now
+  uses the official `python:3.12-bookworm` base and verifies `strix --version`
+  during its Docker build.
 
 ## Still unverified
 
@@ -58,10 +54,6 @@ from an actual installed binary and the code was updated to match:
   native credential flag, so this fallback (explicitly anticipated by
   spec §5.3) is likely what's needed — but it's untested against a real
   authenticated target.
-- **`apps/worker/Dockerfile`'s Strix install command** (`pip install
-  strix-agent` in a Python 3.12 venv) is a placeholder pending the real
-  install instructions — worth checking now that a real binary exists
-  somewhere (how was *that* one installed?).
 
 ## Bedrock has not been exercised end-to-end
 

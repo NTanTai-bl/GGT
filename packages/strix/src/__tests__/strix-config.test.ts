@@ -1,4 +1,4 @@
-import { loadLlmConfigFromEnv } from "../strix-config";
+import { loadLlmConfigFromEnv, strixMaxBudgetUsdFromEnv } from "../strix-config";
 
 const ORIGINAL_ENV = process.env;
 
@@ -32,5 +32,22 @@ describe("loadLlmConfigFromEnv", () => {
     process.env.STRIX_LLM = "bedrock/anthropic.claude-3-sonnet";
     delete process.env.LLM_API_KEY;
     expect(() => loadLlmConfigFromEnv()).not.toThrow();
+  });
+});
+
+describe("strixMaxBudgetUsdFromEnv", () => {
+  it("defaults to the mandatory $3 per-run cap", () => {
+    delete process.env.STRIX_MAX_BUDGET_USD;
+    expect(strixMaxBudgetUsdFromEnv()).toBe(3);
+  });
+
+  it("loads a positive configured cap", () => {
+    process.env.STRIX_MAX_BUDGET_USD = "2.5";
+    expect(strixMaxBudgetUsdFromEnv()).toBe(2.5);
+  });
+
+  it.each(["0", "-1", "not-a-number"])("rejects invalid cap %s", (value) => {
+    process.env.STRIX_MAX_BUDGET_USD = value;
+    expect(() => strixMaxBudgetUsdFromEnv()).toThrow(/positive number/);
   });
 });

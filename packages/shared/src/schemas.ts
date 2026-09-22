@@ -6,6 +6,7 @@ import {
   SCAN_MODES,
   SCAN_TYPES,
   TARGET_TYPES,
+  USER_ROLES,
 } from "./constants";
 import { isSupportedSourceTarget } from "./source-target";
 
@@ -83,6 +84,39 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+const passwordSchema = z
+  .string()
+  .min(12, "password must contain at least 12 characters")
+  .max(128, "password must contain at most 128 characters")
+  .regex(/[a-z]/, "password must contain a lowercase letter")
+  .regex(/[A-Z]/, "password must contain an uppercase letter")
+  .regex(/[0-9]/, "password must contain a number");
+
+export const createUserSchema = z.object({
+  email: z.string().trim().email().max(255).transform((value) => value.toLowerCase()),
+  displayName: z.string().trim().min(1, "displayName is required").max(200),
+  role: z.enum(USER_ROLES),
+  password: passwordSchema,
+});
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updateUserSchema = z
+  .object({
+    displayName: z.string().trim().min(1).max(200).optional(),
+    role: z.enum(USER_ROLES).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((input) => Object.keys(input).length > 0, "at least one field is required");
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+export const resetUserPasswordSchema = z.object({ password: passwordSchema });
+export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
+
+export const assignUserProjectsSchema = z.object({
+  projectIds: z.array(z.string().uuid()).max(500),
+});
+export type AssignUserProjectsInput = z.infer<typeof assignUserProjectsSchema>;
 
 export const pentestRequestedMessageSchema = z.object({
   eventType: z.literal(PENTEST_REQUESTED_EVENT),

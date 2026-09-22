@@ -24,4 +24,11 @@ describe("can", () => {
     expect(can("VIEWER", "PENTEST_CREATE")).toBe(false);
     expect(can("VIEWER", "FINDING_MARK_FIXED_PENDING_RETEST")).toBe(false);
   });
+
+  it("reserves user management and audit access for ADMIN", () => {
+    expect(can("ADMIN", "USER_MANAGE")).toBe(true);
+    expect(can("ADMIN", "AUDIT_VIEW")).toBe(true);
+    expect(can("SECURITY", "USER_MANAGE")).toBe(false);
+    expect(can("DEVELOPER", "AUDIT_VIEW")).toBe(false);
+  });
 });

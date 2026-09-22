@@ -15,6 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </NavLink>
         <NavLink to="/projects">Projects</NavLink>
         {user && can(user.role, "PENTEST_CREATE") && <NavLink to="/pentests/new">Start pentest</NavLink>}
+        {user?.role === "ADMIN" && <NavLink to="/admin/users">User management</NavLink>}
         {user && (
           <span className="logout" onClick={logout}>
             Sign out ({user.email} &middot; {user.role})

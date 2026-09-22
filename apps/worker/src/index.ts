@@ -3,6 +3,7 @@ import { loadLlmConfigFromEnv, StrixPentestEngine } from "@pentest/strix";
 import { logger } from "./logger";
 import { runConsumerLoop } from "./consumer";
 
+// eslint-disable-next-line no-control-regex -- \x1B is the ANSI escape byte itself, intentional
 const ANSI_ESCAPE_PATTERN = new RegExp("\\x1B\\[[0-?]*[ -/]*[@-~]", "g");
 const MAX_LIVE_LOG_CHARS = 16_000;
 

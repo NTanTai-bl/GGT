@@ -4,16 +4,17 @@ import { HttpError } from "../middleware/errorHandler";
 import { getPentestOrThrow } from "./pentest.service";
 import type { AuthenticatedUser } from "../middleware/auth";
 
-export async function listFindingsForRun(runId: string): Promise<Finding[]> {
-  await getPentestOrThrow(runId);
+export async function listFindingsForRun(runId: string, user: AuthenticatedUser): Promise<Finding[]> {
+  await getPentestOrThrow(runId, user);
   return Finding.findAll({ where: { runId }, order: [["severity", "ASC"], ["createdAt", "ASC"]] });
 }
 
-export async function getFindingOrThrow(findingId: string): Promise<Finding> {
+export async function getFindingOrThrow(findingId: string, user: AuthenticatedUser): Promise<Finding> {
   const finding = await Finding.findByPk(findingId);
   if (!finding) {
     throw new HttpError(404, "Finding not found");
   }
+  await getPentestOrThrow(finding.runId, user);
   return finding;
 }
 
@@ -22,7 +23,7 @@ export async function updateFinding(
   input: UpdateFindingInput,
   user: AuthenticatedUser
 ): Promise<Finding> {
-  const finding = await getFindingOrThrow(findingId);
+  const finding = await getFindingOrThrow(findingId, user);
   if (!input.status) {
     return finding;
   }
@@ -70,8 +71,8 @@ export interface PentestReport {
   summary: Record<string, number>;
 }
 
-export async function buildReport(runId: string): Promise<PentestReport> {
-  const run = await getPentestOrThrow(runId); // already includes `targets`
+export async function buildReport(runId: string, user: AuthenticatedUser): Promise<PentestReport> {
+  const run = await getPentestOrThrow(runId, user); // already includes `targets`
   const findings = await Finding.findAll({ where: { runId } });
 
   const summary: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };

@@ -36,6 +36,8 @@ export function initModels(sequelize: Sequelize) {
   initAuditLogModel(sequelize);
 
   Project.belongsTo(User, { foreignKey: "createdBy", as: "creator" });
+  User.hasMany(ProjectMember, { foreignKey: "userId", as: "memberships" });
+  User.hasMany(AuditLog, { foreignKey: "actorId", as: "auditLogs" });
   Project.hasMany(Target, { foreignKey: "projectId", as: "targets" });
   Project.hasMany(Run, { foreignKey: "projectId", as: "runs" });
   Project.hasMany(IntegrationConfig, { foreignKey: "projectId", as: "integrations" });

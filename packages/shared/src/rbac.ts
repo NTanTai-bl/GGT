@@ -17,7 +17,9 @@ export type Permission =
   | "PENTEST_CREATE"
   | "PENTEST_CANCEL"
   | "FINDING_UPDATE_ANY_STATUS"
-  | "FINDING_MARK_FIXED_PENDING_RETEST";
+  | "FINDING_MARK_FIXED_PENDING_RETEST"
+  | "USER_MANAGE"
+  | "AUDIT_VIEW";
 
 const ROLE_PERMISSIONS: Record<Exclude<UserRole, "ADMIN">, Permission[]> = {
   SECURITY: [

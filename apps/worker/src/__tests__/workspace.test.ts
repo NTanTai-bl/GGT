@@ -21,7 +21,9 @@ describe("workspace.ts S3 client construction", () => {
   it("sets forcePathStyle when pointed at a custom endpoint (LocalStack) — without it, LocalStack mis-routes bucket/key", () => {
     process.env.AWS_ENDPOINT_URL = "http://localhost:4566";
 
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- must re-require after jest.resetModules()
     const { S3Client } = require("@aws-sdk/client-s3");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- re-evaluate workspace.ts against the env set above
     require("../workspace");
 
     expect(S3Client).toHaveBeenCalledWith(expect.objectContaining({ forcePathStyle: true }));
@@ -30,7 +32,9 @@ describe("workspace.ts S3 client construction", () => {
   it("does not force path style against real AWS (no custom endpoint)", () => {
     delete process.env.AWS_ENDPOINT_URL;
 
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- must re-require after jest.resetModules()
     const { S3Client } = require("@aws-sdk/client-s3");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- re-evaluate workspace.ts against the env set above
     require("../workspace");
 
     expect(S3Client).toHaveBeenCalledWith(expect.objectContaining({ forcePathStyle: false }));

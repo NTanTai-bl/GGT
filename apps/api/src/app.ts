@@ -8,6 +8,7 @@ import { projectsRouter } from "./routes/projects.routes";
 import { targetsRouter } from "./routes/targets.routes";
 import { pentestsRouter } from "./routes/pentests.routes";
 import { findingsRouter } from "./routes/findings.routes";
+import { usersRouter } from "./routes/users.routes";
 import { apiRateLimiter } from "./middleware/rateLimit";
 import { auditLog } from "./middleware/auditLog";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -29,6 +30,7 @@ export function createApp(): Express {
   app.use("/api/targets", targetsRouter);
   app.use("/api/pentests", pentestsRouter);
   app.use("/api/findings", findingsRouter);
+  app.use("/api/users", usersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

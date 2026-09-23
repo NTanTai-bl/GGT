@@ -111,6 +111,32 @@ button.secondary { background: var(--surface-2); color: var(--ink); border: 1px 
   margin-bottom: 16px;
 }
 
+.success-banner {
+  background: #1c2f1e;
+  color: var(--low);
+  border: 1px solid var(--low);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 16px;
+}
+
+.muted { color: var(--muted); }
+.page-heading p { color: var(--muted); margin: -12px 0 22px; }
+.user-admin-layout { grid-template-columns: minmax(380px, 0.9fr) minmax(480px, 1.1fr); align-items: start; }
+.clickable-row, .selected-row { cursor: pointer; }
+.selected-row td { background: var(--surface-2); }
+.admin-form-card { margin-top: 20px; }
+.admin-form-card h3, .card h3 { margin-top: 0; }
+.button-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.project-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.audit-card { overflow-x: auto; }
+
+@media (max-width: 900px) {
+  .user-admin-layout, .grid.cols-2, .grid.cols-4 { grid-template-columns: 1fr; }
+  .content { padding: 24px 20px; }
+}
+
 .filters { display: flex; gap: 10px; margin-bottom: 16px; }
 .filters select { width: auto; }
 

@@ -7,6 +7,7 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectDetailPage } from "./pages/ProjectDetailPage";
 import { CreatePentestPage } from "./pages/CreatePentestPage";
 import { PentestDetailPage } from "./pages/PentestDetailPage";
+import { UserManagementPage } from "./pages/UserManagementPage";
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -22,6 +23,10 @@ function ProtectedApp() {
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/pentests/new" element={<CreatePentestPage />} />
         <Route path="/pentests/:id" element={<PentestDetailPage />} />
+        <Route
+          path="/admin/users"
+          element={user.role === "ADMIN" ? <UserManagementPage /> : <Navigate to="/" replace />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

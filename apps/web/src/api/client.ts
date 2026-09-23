@@ -41,6 +41,17 @@ export const api = {
   logout: () => request<void>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ id: string; email: string; role: UserRole }>("/api/auth/me"),
 
+  listUsers: () => request<ManagedUser[]>("/api/users"),
+  createUser: (input: CreateUserInput) =>
+    request<ManagedUser>("/api/users", { method: "POST", body: JSON.stringify(input) }),
+  updateUser: (id: string, input: { displayName?: string; role?: UserRole; isActive?: boolean }) =>
+    request<ManagedUser>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  resetUserPassword: (id: string, password: string) =>
+    request<void>(`/api/users/${id}/reset-password`, { method: "POST", body: JSON.stringify({ password }) }),
+  assignUserProjects: (id: string, projectIds: string[]) =>
+    request<ManagedUser>(`/api/users/${id}/projects`, { method: "PUT", body: JSON.stringify({ projectIds }) }),
+  listUserAuditLogs: (id: string) => request<UserAuditLog[]>(`/api/users/${id}/audit-logs`),
+
   listProjects: () => request<Project[]>("/api/projects"),
   getProject: (id: string) => request<ProjectDetail>(`/api/projects/${id}`),
   createProject: (input: { name: string; description?: string }) =>
@@ -82,8 +93,38 @@ export interface Project {
 
 export interface ProjectMembership {
   id: string;
+  projectId: string;
   userId: string;
   user?: { id: string; email: string; displayName: string };
+}
+
+export interface ManagedUser {
+  id: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  memberships: Array<ProjectMembership & { project?: { id: string; name: string } }>;
+}
+
+export interface CreateUserInput {
+  email: string;
+  displayName: string;
+  role: UserRole;
+  password: string;
+}
+
+export interface UserAuditLog {
+  id: string;
+  actorId: string | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  actor?: { id: string; email: string; displayName: string } | null;
 }
 
 export interface ProjectDetail extends Project {

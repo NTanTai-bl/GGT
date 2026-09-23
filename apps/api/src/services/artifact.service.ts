@@ -2,6 +2,7 @@ import { GetObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/clien
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../config/env";
 import { getPentestOrThrow } from "./pentest.service";
+import type { AuthenticatedUser } from "../middleware/auth";
 
 const s3Client = new S3Client({
   region: env.AWS_REGION,
@@ -18,8 +19,8 @@ export interface RunArtifactSummary {
 }
 
 /** Lists the S3 objects under <run-id>/ and returns short-lived presigned download links — never raw bytes through the API. */
-export async function listRunArtifacts(runId: string): Promise<RunArtifactSummary[]> {
-  await getPentestOrThrow(runId);
+export async function listRunArtifacts(runId: string, user: AuthenticatedUser): Promise<RunArtifactSummary[]> {
+  await getPentestOrThrow(runId, user);
 
   const prefix = `${runId}/`;
   const listing = await s3Client.send(

@@ -10,7 +10,7 @@ findingsRouter.use(requireAuth);
 findingsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    res.json(await getFindingOrThrow(req.params.id as string));
+    res.json(await getFindingOrThrow(req.params.id as string, req.user!));
   })
 );
 

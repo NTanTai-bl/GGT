@@ -1,4 +1,4 @@
-import { createPentestSchema, createTargetSchema } from "@pentest/shared";
+import { createPentestSchema, createTargetSchema, createUserSchema } from "@pentest/shared";
 
 describe("createTargetSchema", () => {
   it("rejects a target where authorization is not explicitly confirmed", () => {
@@ -103,5 +103,26 @@ describe("createPentestSchema", () => {
       authorizationConfirmed: true,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("createUserSchema", () => {
+  it("normalizes email and accepts a strong temporary password", () => {
+    const result = createUserSchema.parse({
+      email: "  Security.User@Example.com ",
+      displayName: "Security User",
+      role: "SECURITY",
+      password: "Temporary1234",
+    });
+    expect(result.email).toBe("security.user@example.com");
+  });
+
+  it("rejects a weak temporary password", () => {
+    expect(createUserSchema.safeParse({
+      email: "viewer@example.com",
+      displayName: "Viewer",
+      role: "VIEWER",
+      password: "password",
+    }).success).toBe(false);
   });
 });

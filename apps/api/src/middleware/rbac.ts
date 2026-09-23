@@ -26,11 +26,15 @@ export function requirePermission(permission: Permission) {
  * the response directly, so callers can await it inside a service function
  * alongside other DB-dependent checks.
  */
-export async function assertProjectAccess(projectId: string, user: { id: string; role: string }): Promise<void> {
+export async function assertProjectAccess(
+  projectId: string,
+  user: { id: string; role: string },
+  hideExistence = false
+): Promise<void> {
   if (user.role === "ADMIN" || user.role === "SECURITY") return;
 
   const membership = await ProjectMember.findOne({ where: { projectId, userId: user.id } });
   if (!membership) {
-    throw new HttpError(403, "You are not a member of this project");
+    throw new HttpError(hideExistence ? 404 : 403, hideExistence ? "Resource not found" : "You are not a member of this project");
   }
 }

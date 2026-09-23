@@ -1,14 +1,19 @@
 jest.mock("@pentest/database", () => ({
   Finding: { findByPk: jest.fn() },
+  Run: { findByPk: jest.fn() },
+  Target: {},
+  ProjectMember: { findOne: jest.fn() },
   recordAuditLog: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { Finding, recordAuditLog } from "@pentest/database";
+import { Finding, ProjectMember, recordAuditLog, Run } from "@pentest/database";
 import { updateFinding } from "../services/finding.service";
 import { HttpError } from "../middleware/errorHandler";
 import type { AuthenticatedUser } from "../middleware/auth";
 
 const mockedFinding = Finding as unknown as { findByPk: jest.Mock };
+const mockedRun = Run as unknown as { findByPk: jest.Mock };
+const mockedMembership = ProjectMember as unknown as { findOne: jest.Mock };
 const mockedAudit = recordAuditLog as jest.Mock;
 
 function user(role: AuthenticatedUser["role"]): AuthenticatedUser {
@@ -16,10 +21,14 @@ function user(role: AuthenticatedUser["role"]): AuthenticatedUser {
 }
 
 function makeFinding(status = "OPEN") {
-  return { id: "finding-1", status, update: jest.fn() };
+  return { id: "finding-1", runId: "run-1", status, update: jest.fn() };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockedRun.findByPk.mockResolvedValue({ id: "run-1", projectId: "project-1" });
+  mockedMembership.findOne.mockResolvedValue({ id: "membership-1" });
+});
 
 describe("updateFinding — role-based status transitions (spec §25)", () => {
   it("lets SECURITY set any status", async () => {
@@ -53,5 +62,15 @@ describe("updateFinding — role-based status transitions (spec §25)", () => {
     await expect(updateFinding("finding-1", { status: "CONFIRMED" }, user("VIEWER"))).rejects.toBeInstanceOf(
       HttpError
     );
+  });
+
+  it("hides a finding from a user who is not a member of its project", async () => {
+    const finding = makeFinding();
+    mockedFinding.findByPk.mockResolvedValue(finding);
+    mockedMembership.findOne.mockResolvedValue(null);
+
+    await expect(updateFinding("finding-1", { status: "FIXED_PENDING_RETEST" }, user("DEVELOPER")))
+      .rejects.toMatchObject({ status: 404 });
+    expect(finding.update).not.toHaveBeenCalled();
   });
 });

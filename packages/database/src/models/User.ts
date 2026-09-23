@@ -16,6 +16,8 @@ export class User extends Model<InferAttributes<User, Timestamps>, InferCreation
   declare passwordHash: string;
   declare displayName: string;
   declare role: CreationOptional<UserRole>;
+  declare isActive: CreationOptional<boolean>;
+  declare sessionVersion: CreationOptional<number>;
   declare readonly createdAt: CreationOptional<Date>;
   declare readonly updatedAt: CreationOptional<Date>;
 }
@@ -28,8 +30,16 @@ export function initUserModel(sequelize: Sequelize): typeof User {
       passwordHash: { type: DataTypes.STRING(255), allowNull: false },
       displayName: { type: DataTypes.STRING(200), allowNull: false },
       role: { type: DataTypes.ENUM(...USER_ROLES), allowNull: false, defaultValue: "VIEWER" },
+      isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+      sessionVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     },
-    { sequelize, tableName: "users", underscored: true }
+    {
+      sequelize,
+      tableName: "users",
+      underscored: true,
+      defaultScope: { attributes: { exclude: ["passwordHash"] } },
+      scopes: { withPassword: { attributes: { include: ["passwordHash"] } } },
+    }
   );
   return User;
 }

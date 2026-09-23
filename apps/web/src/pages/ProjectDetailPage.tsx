@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Environment, TargetType } from "@pentest/shared";
+import { can, type Environment, type TargetType } from "@pentest/shared";
 import { api, type PentestRun, type ProjectDetail } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [runs, setRuns] = useState<PentestRun[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -101,9 +103,11 @@ export function ProjectDetailPage() {
               )}
             </tbody>
           </table>
-          <Link to={`/pentests/new?projectId=${project.id}`}>
-            <button style={{ marginTop: 12 }}>Start pentest</button>
-          </Link>
+          {user && can(user.role, "PENTEST_CREATE") && (
+            <Link to={`/pentests/new?projectId=${project.id}`}>
+              <button style={{ marginTop: 12 }}>Start pentest</button>
+            </Link>
+          )}
         </div>
 
         <AddTargetForm projectId={project.id} onCreated={refresh} error={error} setError={setError} />

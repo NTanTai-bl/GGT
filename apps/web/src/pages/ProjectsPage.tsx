@@ -1,8 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { can } from "@pentest/shared";
 import { api, type Project } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function ProjectsPage() {
+  const { user } = useAuth();
+  const canManage = Boolean(user && can(user.role, "PROJECT_MANAGE"));
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -14,7 +18,7 @@ export function ProjectsPage() {
   }
 
   useEffect(() => {
-    refresh();
+    refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to load projects"));
   }, []);
 
   async function handleCreate(e: FormEvent) {
@@ -36,6 +40,7 @@ export function ProjectsPage() {
   return (
     <div>
       <h2>Projects</h2>
+      {!canManage && error && <div className="error-banner">{error}</div>}
       <div className="grid cols-2">
         <div>
           <table>
@@ -66,6 +71,7 @@ export function ProjectsPage() {
             </tbody>
           </table>
         </div>
+        {canManage && (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>New project</h3>
           {error && <div className="error-banner">{error}</div>}
@@ -83,6 +89,7 @@ export function ProjectsPage() {
             </button>
           </form>
         </div>
+        )}
       </div>
     </div>
   );

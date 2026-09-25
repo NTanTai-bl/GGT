@@ -9,23 +9,29 @@ export function Dashboard() {
   const [runs, setRuns] = useState<PentestRun[]>([]);
   const [severityCounts, setSeverityCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [projectList, runList] = await Promise.all([api.listProjects(), api.listPentests()]);
-      setProjects(projectList);
-      setRuns(runList);
+      try {
+        const [projectList, runList] = await Promise.all([api.listProjects(), api.listPentests()]);
+        setProjects(projectList);
+        setRuns(runList);
 
-      const recentCompleted = runList.filter((r) => r.status === "COMPLETED").slice(0, 5);
-      const findingsPerRun = await Promise.all(
-        recentCompleted.map((r) => api.listFindings(r.id).catch(() => [] as Finding[]))
-      );
-      const counts: Record<string, number> = {};
-      for (const findings of findingsPerRun) {
-        for (const f of findings) counts[f.severity] = (counts[f.severity] ?? 0) + 1;
+        const recentCompleted = runList.filter((r) => r.status === "COMPLETED").slice(0, 5);
+        const findingsPerRun = await Promise.all(
+          recentCompleted.map((r) => api.listFindings(r.id).catch(() => [] as Finding[]))
+        );
+        const counts: Record<string, number> = {};
+        for (const findings of findingsPerRun) {
+          for (const f of findings) counts[f.severity] = (counts[f.severity] ?? 0) + 1;
+        }
+        setSeverityCounts(counts);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard");
+      } finally {
+        setLoading(false);
       }
-      setSeverityCounts(counts);
-      setLoading(false);
     })();
   }, []);
 
@@ -37,6 +43,7 @@ export function Dashboard() {
   return (
     <div>
       <h2>Dashboard</h2>
+      {error && <div className="error-banner">{error}</div>}
       <div className="grid cols-4" style={{ marginBottom: 16 }}>
         <Stat label="Projects" value={projects.length} />
         <Stat label="Running pentests" value={runningCount} />
@@ -62,7 +69,7 @@ export function Dashboard() {
         <table>
           <thead>
             <tr>
-              <th>Started</th>
+              <th>Requested</th>
               <th>Status</th>
               <th>Scan type</th>
               <th>Depth</th>
@@ -72,7 +79,7 @@ export function Dashboard() {
           <tbody>
             {recentRuns.map((run) => (
               <tr key={run.id}>
-                <td>{run.startedAt ? new Date(run.startedAt).toLocaleString() : "—"}</td>
+                <td>{new Date(run.startedAt ?? run.createdAt).toLocaleString()}</td>
                 <td>
                   <span className={`chip ${run.status}`}>{run.status}</span>
                 </td>

@@ -69,6 +69,25 @@ describe("createTargetSchema", () => {
   });
 });
 
+describe("createTargetSchema — git revision fields", () => {
+  const base = {
+    type: "SOURCE" as const,
+    target: "https://github.com/owner/repository",
+    environment: "STAGING" as const,
+    authorizationConfirmed: true as const,
+  };
+
+  it("accepts ordinary branch names and hex commit SHAs", () => {
+    expect(createTargetSchema.safeParse({ ...base, branch: "feature/login-fix", commitSha: "a83ec45" }).success).toBe(true);
+  });
+
+  it("rejects values git could read as options or revision expressions", () => {
+    expect(createTargetSchema.safeParse({ ...base, branch: "--upload-pack=x" }).success).toBe(false);
+    expect(createTargetSchema.safeParse({ ...base, branch: "main..evil" }).success).toBe(false);
+    expect(createTargetSchema.safeParse({ ...base, commitSha: "HEAD~1" }).success).toBe(false);
+  });
+});
+
 describe("createPentestSchema", () => {
   it("rejects a credentialSecretArn that isn't a Secrets Manager ARN", () => {
     const result = createPentestSchema.safeParse({

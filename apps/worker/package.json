@@ -16,6 +16,7 @@
     "@aws-sdk/client-secrets-manager": "^3.614.0",
     "@aws-sdk/client-sqs": "^3.614.0",
     "@pentest/database": "*",
+    "@pentest/reviewer": "*",
     "@pentest/shared": "*",
     "@pentest/strix": "*",
     "dotenv": "^16.4.5",

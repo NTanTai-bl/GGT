@@ -19,7 +19,11 @@ ENV NODE_ENV=production
 # Strix 1.3.0 marks 25 function tools as strict. AWS Bedrock Claude accepts at
 # most 20 strict tools, so Bedrock scans fail before inference starts. 1.6.1
 # keeps the full toolset but disables strict schemas for incompatible routes.
-ARG STRIX_AGENT_VERSION=1.6.1
+# 1.6.1 has an import race at startup: its background "import warm-up" thread
+# can evict `agents.models` from sys.modules while the main thread imports it,
+# failing the scan within a second with `KeyError: 'agents.models'`. 1.6.2
+# fixes this (the main thread waits for the warm-up before importing).
+ARG STRIX_AGENT_VERSION=1.6.2
 
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 

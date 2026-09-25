@@ -10,6 +10,7 @@ import type {
 } from "@pentest/shared";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+export const SESSION_EXPIRED_EVENT = "ggt:session-expired";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -26,6 +27,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
+    // Session expired or was invalidated (password reset, account locked):
+    // let AuthProvider drop back to the login screen instead of leaving every
+    // page showing request errors.
+    if (res.status === 401 && !path.startsWith("/api/auth/")) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
     throw new ApiError(res.status, body.error || "Request failed");
   }
   if (res.status === 204) return undefined as T;

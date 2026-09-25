@@ -30,5 +30,16 @@ export function validateScanTypeTargets(
   if (rules.credential === "required" && !hasCredential) {
     return { valid: false, error: `${scanType} requires a credentialSecretArn` };
   }
+
+  // Keep each scan's target set unambiguous. In particular, a Source Review
+  // must never accidentally inherit a WEB/API selection from a previously
+  // selected scan type in the UI.
+  if (scanType === "SOURCE_REVIEW" && hasWebOrApi) {
+    return { valid: false, error: "SOURCE_REVIEW only accepts SOURCE targets" };
+  }
+  if ((scanType === "BLACK_BOX" || scanType === "AUTHENTICATED") && hasSource) {
+    return { valid: false, error: `${scanType} only accepts WEB or API targets` };
+  }
+
   return { valid: true };
 }

@@ -30,6 +30,13 @@ services:
       # Docker daemon to bind-mount that clone into its sandbox. The path must
       # therefore be identical and visible from both the worker and daemon.
       TMPDIR: ${STRIX_DOCKER_SHARED_DIR:?Set STRIX_DOCKER_SHARED_DIR in .env}
+      # Each scan gets its own Strix TMPDIR under here; the worker deletes it
+      # (including Strix's GitHub clone) when the run ends.
+      GGT_STRIX_TMP_ROOT: ${STRIX_DOCKER_SHARED_DIR:?Set STRIX_DOCKER_SHARED_DIR in .env}/runs
+      # Local-directory targets (S3 archives, pinned branch/commit checkouts)
+      # are bind-mounted into the sandbox by the HOST daemon, so the run
+      # workspace must also live on the shared path, not inside the container.
+      STRIX_WORKSPACE_ROOT: ${STRIX_DOCKER_SHARED_DIR:?Set STRIX_DOCKER_SHARED_DIR in .env}/workspaces
       # The Strix CLI runs inside the worker while its sandbox is a sibling
       # container. Put both on one user-defined network so the worker can
       # reach Caido by sandbox IP instead of host-only 127.0.0.1 ports.

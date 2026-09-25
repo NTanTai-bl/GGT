@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { UserRole } from "@pentest/shared";
-import { api } from "../api/client";
+import { api, SESSION_EXPIRED_EVENT } from "../api/client";
 
 interface AuthUser {
   id: string;
@@ -27,6 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, []);
 
   async function login(email: string, password: string) {

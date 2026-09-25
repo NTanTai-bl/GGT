@@ -3,9 +3,11 @@ import { updateFindingSchema } from "@pentest/shared";
 import { asyncHandler } from "./asyncHandler";
 import { requireAuth } from "../middleware/auth";
 import { getFindingOrThrow, updateFinding } from "../services/finding.service";
+import { uuidParam } from "../middleware/validateParams";
 
 export const findingsRouter = Router();
 findingsRouter.use(requireAuth);
+findingsRouter.param("id", uuidParam);
 
 findingsRouter.get(
   "/:id",

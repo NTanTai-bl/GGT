@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Environment, TargetType } from "@pentest/shared";
+import { can, type Environment, type TargetType } from "@pentest/shared";
 import { api, type PentestRun, type ProjectDetail } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [runs, setRuns] = useState<PentestRun[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function refresh() {
     if (!id) return;
@@ -17,10 +20,14 @@ export function ProjectDetailPage() {
   }
 
   useEffect(() => {
-    refresh();
+    setLoadError(null);
+    refresh().catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load project"));
   }, [id]);
 
+  if (loadError) return <div className="error-banner">{loadError}</div>;
   if (!project) return <p>Loading...</p>;
+
+  const canManageTargets = Boolean(user && can(user.role, "TARGET_MANAGE"));
 
   return (
     <div>
@@ -101,12 +108,23 @@ export function ProjectDetailPage() {
               )}
             </tbody>
           </table>
-          <Link to={`/pentests/new?projectId=${project.id}`}>
-            <button style={{ marginTop: 12 }}>Start pentest</button>
-          </Link>
+          {user && can(user.role, "PENTEST_CREATE") && (
+            <Link to={`/pentests/new?projectId=${project.id}`}>
+              <button style={{ marginTop: 12 }}>Start pentest</button>
+            </Link>
+          )}
         </div>
 
-        <AddTargetForm projectId={project.id} onCreated={refresh} error={error} setError={setError} />
+        {canManageTargets && (
+          <AddTargetForm
+            projectId={project.id}
+            onCreated={() => {
+              refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to reload project"));
+            }}
+            error={error}
+            setError={setError}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -33,6 +33,40 @@ export async function deleteWorkspace(dir: string): Promise<void> {
     // not a reason to fail a scan that already completed.
     logger.warn({ err, dir }, "Failed to delete workspace after run");
   }
+}
+
+/**
+ * Per-run TMPDIR for the Strix process. Strix clones GitHub targets into
+ * `$TMPDIR/strix_repos/<run-name>/<repo>` and never deletes them, so without
+ * this every scanned repository stayed on disk forever. The root must be a
+ * path the host Docker daemon also sees at the same location (Strix
+ * bind-mounts the clone into its sandbox), e.g. `${STRIX_DOCKER_SHARED_DIR}/runs`.
+ * Returns null when GGT_STRIX_TMP_ROOT is not configured.
+ */
+export async function createStrixTempDir(runId: string): Promise<string | null> {
+  const root = process.env.GGT_STRIX_TMP_ROOT?.trim();
+  if (!root) return null;
+  const dir = path.join(root, runId);
+  await mkdir(dir, { recursive: true });
+  return dir;
+}
+
+/** Repository checkouts Strix made under `<strixTmpDir>/strix_repos/<run-name>/<repo>`. */
+export async function findStrixClones(strixTmpDir: string): Promise<string[]> {
+  const reposRoot = path.join(strixTmpDir, "strix_repos");
+  const clones: string[] = [];
+  try {
+    for (const runEntry of await readdir(reposRoot, { withFileTypes: true })) {
+      if (!runEntry.isDirectory()) continue;
+      const runDir = path.join(reposRoot, runEntry.name);
+      for (const repoEntry of await readdir(runDir, { withFileTypes: true })) {
+        if (repoEntry.isDirectory()) clones.push(path.join(runDir, repoEntry.name));
+      }
+    }
+  } catch {
+    // No GitHub target in this run, or Strix failed before cloning.
+  }
+  return clones;
 }
 
 /**

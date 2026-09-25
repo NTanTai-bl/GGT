@@ -128,6 +128,16 @@ STRIX_TIMEOUT_MS=1800000
 STRIX_MAX_BUDGET_USD=3
 STRIX_WORKSPACE_ROOT=/opt/ggt/workspaces
 
+# AI Reviewer độc lập (bật sau khi đã kiểm tra quyền gọi model)
+AI_REVIEW_ENABLED=true
+AI_REVIEW_PROVIDER=bedrock
+AI_REVIEW_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+AI_REVIEW_MAX_INPUT_CHARS=60000
+AI_REVIEW_MAX_OUTPUT_TOKENS=2500
+AI_REVIEW_MAX_FINDINGS=50
+AI_REVIEW_MAX_BUDGET_USD=0.5
+AI_REVIEW_PROMPT_VERSION=v1
+
 WORKER_POLL_INTERVAL_MS=5000
 WORKER_VISIBILITY_TIMEOUT_SEC=1800
 ```
@@ -140,6 +150,39 @@ vẫn dùng mặc định an toàn là 3 USD. Strix kiểm tra ngân sách sau m
 response nên chi phí thực tế có thể vượt nhẹ do request đã được gửi hoặc đang
 chạy đồng thời. Theo dõi AWS Billing/Budgets vẫn cần thiết; đây không phải giới
 hạn thanh toán tuyệt đối ở cấp tài khoản AWS.
+
+### AI Review findings
+
+Khi `AI_REVIEW_ENABLED=true`, worker thực hiện thêm một bước sau khi Strix kết
+thúc và trước khi xóa source workspace:
+
+```text
+Strix -> raw-strix-output.json -> AI review source/evidence
+      -> ai-reviewed-vulnerabilities.json
+```
+
+Hai artifact JSON được hiển thị trong mục **Artifacts** của trang Pentest run.
+File `raw-strix-output.json` giữ toàn bộ candidate findings từ Strix. File
+`ai-reviewed-vulnerabilities.json` có `acceptedFindings`, `rejectedFindings`,
+`summary` và metadata model/token/cost. Finding mà reviewer không kết luận được
+sẽ có decision `NEEDS_HUMAN_REVIEW`; lỗi reviewer không làm mất raw output hoặc
+làm pentest thất bại.
+
+Với Bedrock, không đặt `AI_REVIEW_API_KEY`. Worker dùng AWS credentials/IAM role
+và cần quyền `bedrock:InvokeModel` cho model trong `AI_REVIEW_MODEL`. Khi chạy
+Docker local, thay `AWS_ACCESS_KEY_ID` và `AWS_SECRET_ACCESS_KEY` giá trị `test`
+bằng credentials AWS được cấp quyền Bedrock; LocalStack vẫn chấp nhận các giá
+trị này cho SQS/S3 local.
+
+`AI_REVIEW_MAX_BUDGET_USD` được enforce theo token khi cấu hình thêm giá hiện tại:
+
+```env
+AI_REVIEW_INPUT_COST_PER_MILLION_USD=<current-input-price>
+AI_REVIEW_OUTPUT_COST_PER_MILLION_USD=<current-output-price>
+```
+
+Nếu chưa khai báo hai biến giá, artifact vẫn ghi token usage nhưng
+`estimatedCostUsd` là `null`; giới hạn số finding và token vẫn được áp dụng.
 
 ## 3. Khởi tạo schema trên RDS
 
@@ -217,7 +260,8 @@ Dừng API và Web bằng `Ctrl+C` trong hai terminal tương ứng.
 
 Sau khi đã cài dependencies, migrate và seed, một phiên làm việc thông thường chỉ cần:
 
-```powershell
+```powershell Tan tai
+docker start ggt-postgres
 npm run local:rds:up
 npm run dev:api
 npm run dev:web
@@ -299,3 +343,19 @@ packages/
 infra/aws/   LocalStack bootstrap
 docs/        Hướng dẫn sử dụng và giới hạn kỹ thuật
 ```
+
+Up to S3
+cd C:\Users\ADMIN\Desktop\GGT
+
+docker compose up -d localstack
+
+$Archive = "C:\Users\ADMIN\Desktop\my-project.tar.gz"
+$ContainerId = (docker compose ps -q localstack).Trim()
+
+docker cp $Archive "${ContainerId}:/tmp/my-project.tar.gz"
+
+docker compose exec -T localstack `
+awslocal s3 mb s3://ggt-pentest-artifacts
+
+docker compose exec -T localstack `  awslocal s3 cp /tmp/my-project.tar.gz`
+s3://ggt-pentest-artifacts/source-inputs/my-project.tar.gz

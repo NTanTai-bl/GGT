@@ -62,17 +62,26 @@ export async function updateProject(
   }
 
   if (input.memberIds) {
-    const existing = await ProjectMember.findAll({ where: { projectId } });
-    const existingUserIds = new Set(existing.map((m) => m.userId));
-    const nextUserIds = new Set(input.memberIds);
+    const memberIds = [...new Set(input.memberIds)];
+    // Unknown user ids would otherwise hit the FK constraint and surface as a 500.
+    const users = await User.findAll({ where: { id: memberIds }, attributes: ["id"] });
+    if (users.length !== memberIds.length) {
+      throw new HttpError(404, "One or more users do not exist");
+    }
 
-    const toAdd = input.memberIds.filter((id) => !existingUserIds.has(id));
-    const toRemove = existing.filter((m) => !nextUserIds.has(m.userId));
+    const sequelize = ProjectMember.sequelize;
+    if (!sequelize) throw new Error("ProjectMember model is not initialized");
+    await sequelize.transaction(async (transaction) => {
+      const existing = await ProjectMember.findAll({ where: { projectId }, transaction });
+      const existingUserIds = new Set(existing.map((m) => m.userId));
+      const nextUserIds = new Set(memberIds);
 
-    await Promise.all([
-      ...toAdd.map((userId) => ProjectMember.create({ projectId, userId, addedBy: actorId })),
-      ...toRemove.map((m) => m.destroy()),
-    ]);
+      const toAdd = memberIds.filter((id) => !existingUserIds.has(id));
+      const toRemove = existing.filter((m) => !nextUserIds.has(m.userId));
+
+      for (const m of toRemove) await m.destroy({ transaction });
+      for (const userId of toAdd) await ProjectMember.create({ projectId, userId, addedBy: actorId }, { transaction });
+    });
   }
 
   await recordAuditLog({ actorId, action: "PROJECT_UPDATED", entityType: "project", entityId: projectId });

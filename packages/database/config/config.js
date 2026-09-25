@@ -5,17 +5,19 @@ const fs = require("fs");
 
 // RDS Postgres rejects unencrypted connections by default — see
 // packages/database/src/sequelize.ts for the full explanation of these vars.
+// Keep this in sync with sequelize.ts so migrations verify the certificate
+// exactly like the API/worker do (DB_SSL_CA_PATH + DB_SSL_REJECT_UNAUTHORIZED).
 function buildSslOptions() {
-  if (process.env.DB_SSL === "true") {
-    return {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    };
-  }
+  if (process.env.DB_SSL !== "true") return {};
 
-  return {};
+  const caPath = process.env.DB_SSL_CA_PATH;
+  return {
+    ssl: {
+      require: true,
+      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
+      ...(caPath ? { ca: fs.readFileSync(caPath, "utf8") } : {}),
+    },
+  };
 }
 
 const base = {

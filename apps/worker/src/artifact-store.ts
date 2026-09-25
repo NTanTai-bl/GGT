@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "./config/env";
+import type { AiReviewArtifact } from "@pentest/reviewer";
 
 const s3Client = new S3Client({
   region: env.AWS_REGION,
@@ -30,18 +31,22 @@ export async function storeRunArtifacts(artifacts: RunArtifacts): Promise<void> 
   await Promise.all([
     putObject(`${prefix}/stdout.log`, artifacts.stdout),
     putObject(`${prefix}/stderr.log`, artifacts.stderr),
-    putObject(`${prefix}/vulnerabilities.json`, JSON.stringify(artifacts.rawFindings, null, 2)),
+    putObject(`${prefix}/raw-strix-output.json`, JSON.stringify(artifacts.rawFindings, null, 2), "application/json"),
     putObject(`${prefix}/metadata.json`, JSON.stringify(artifacts.metadata, null, 2)),
   ]);
 }
 
-async function putObject(key: string, body: string): Promise<void> {
+export async function storeAiReviewArtifact(runId: string, artifact: AiReviewArtifact): Promise<void> {
+  await putObject(`${runId}/ai-reviewed-vulnerabilities.json`, JSON.stringify(artifact, null, 2), "application/json");
+}
+
+async function putObject(key: string, body: string, contentType = "application/octet-stream"): Promise<void> {
   await s3Client.send(
     new PutObjectCommand({
       Bucket: env.S3_ARTIFACTS_BUCKET,
       Key: key,
       Body: body,
-      ContentType: "application/octet-stream",
+      ContentType: contentType,
     })
   );
 }

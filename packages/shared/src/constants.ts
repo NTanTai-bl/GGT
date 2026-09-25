@@ -11,6 +11,8 @@ export const RUN_STATUSES = [
   "FAILED",
   "CANCELLED",
 ] as const;
+/** Statuses in which a run still owns its targets (blocks a new scan, may be cancelled). */
+export const ACTIVE_RUN_STATUSES = ["QUEUED", "PREPARING", "RUNNING", "PROCESSING_RESULTS"] as const;
 export const SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] as const;
 export const FINDING_STATUSES = [
   "OPEN",

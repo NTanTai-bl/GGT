@@ -20,6 +20,28 @@ export interface NormalizedFinding {
 }
 
 /**
+ * Column sizes of pentest_findings (packages/database migrations). LLM output
+ * has no length contract, and one over-long value would make the INSERT fail
+ * and silently drop the finding, so bounded columns are truncated here.
+ */
+const COLUMN_LIMITS = {
+  title: 500,
+  category: 200,
+  cwe: 20,
+  endpoint: 500,
+  method: 10,
+  sourceFile: 500,
+} as const;
+
+function truncate(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function truncateOrNull(value: string | undefined, max: number): string | null {
+  return value === undefined ? null : truncate(value, max);
+}
+
+/**
  * Converts whatever shape Strix (or a SARIF result file it produced)
  * emitted into our fixed internal schema. Strix's own field names aren't a
  * contract we control, so every field is read defensively across a few
@@ -30,18 +52,28 @@ export function normalizeFinding(rawInput: RawStrixFinding): NormalizedFinding {
   // rawInput (non-SARIF Strix output) always wins if both are present.
   const raw = { ...extractSarifFields(rawInput), ...rawInput };
 
-  const title = firstString(raw, ["title", "name", "vulnerability", "summary", "ruleId"]) ?? "Untitled finding";
-  const category = firstString(raw, ["category", "type", "vulnerability_type", "class"]) ?? "Uncategorized";
-  const cwe = firstString(raw, ["cwe", "cweId"]);
+  const title = truncate(
+    firstString(raw, ["title", "name", "vulnerability", "summary", "ruleId"]) ?? "Untitled finding",
+    COLUMN_LIMITS.title
+  );
+  const category = truncate(
+    firstString(raw, ["category", "type", "vulnerability_type", "finding_class", "class"]) ?? "Uncategorized",
+    COLUMN_LIMITS.category
+  );
+  const cwe = truncateOrNull(firstString(raw, ["cwe", "cweId"]), COLUMN_LIMITS.cwe);
   const description = firstString(raw, ["description", "desc", "details"]) ?? "";
-  const endpoint = firstString(raw, ["endpoint", "url", "path", "uri"]);
-  const method = firstString(raw, ["method", "http_method", "verb"])?.toUpperCase() ?? null;
-  const sourceFile = firstString(raw, ["sourceFile", "source_file"]);
-  const sourceLine = firstNumber(raw, ["sourceLine", "source_line"]);
-  const evidence = firstString(raw, ["evidence", "proof", "request_response"]);
-  const poc = firstString(raw, ["poc", "proof_of_concept", "reproduction"]);
+  const endpoint = truncateOrNull(firstString(raw, ["endpoint", "url", "path", "uri", "target"]), COLUMN_LIMITS.endpoint);
+  const method = truncateOrNull(firstString(raw, ["method", "http_method", "verb"])?.toUpperCase(), COLUMN_LIMITS.method);
+  const codeLocation = firstCodeLocation(raw);
+  const sourceFile = truncateOrNull(
+    firstString(raw, ["sourceFile", "source_file"]) ?? codeLocation.file,
+    COLUMN_LIMITS.sourceFile
+  );
+  const sourceLine = firstNumber(raw, ["sourceLine", "source_line"]) ?? codeLocation.line;
+  const evidence = firstString(raw, ["evidence", "proof", "request_response", "technical_analysis"]);
+  const poc = firstString(raw, ["poc", "proof_of_concept", "reproduction", "poc_description", "poc_script_code"]);
   const impact = firstString(raw, ["impact", "business_impact"]);
-  const recommendation = firstString(raw, ["recommendation", "remediation", "fix"]);
+  const recommendation = firstString(raw, ["recommendation", "remediation", "remediation_steps", "fix"]);
   const severity = normalizeSeverity(firstString(raw, ["severity", "risk", "risk_level", "level"]));
 
   const fingerprint = createHash("sha256")
@@ -53,12 +85,12 @@ export function normalizeFinding(rawInput: RawStrixFinding): NormalizedFinding {
     title,
     severity,
     category,
-    cwe: cwe ?? null,
+    cwe,
     description,
-    endpoint: endpoint ?? null,
+    endpoint,
     method,
-    sourceFile: sourceFile ?? null,
-    sourceLine: sourceLine ?? null,
+    sourceFile,
+    sourceLine: sourceLine !== undefined && sourceLine > 0 ? Math.trunc(sourceLine) : null,
     evidence: evidence ?? null,
     poc: poc ?? null,
     impact: impact ?? null,
@@ -100,6 +132,20 @@ function extractSarifFields(raw: RawStrixFinding): Partial<RawStrixFinding> {
   }
 
   return out;
+}
+
+/**
+ * Strix's own vulnerability reports carry `code_locations: [{ file, start_line }]`
+ * (the same field the AI reviewer reads) instead of flat sourceFile/sourceLine.
+ */
+function firstCodeLocation(raw: RawStrixFinding): { file?: string; line?: number } {
+  const locations = raw.code_locations;
+  const first = Array.isArray(locations) ? asRecord(locations[0]) : undefined;
+  if (!first) return {};
+  const file = typeof first.file === "string" && first.file.trim() ? first.file.trim() : undefined;
+  const lineValue = first.start_line ?? first.line ?? first.startLine;
+  const line = typeof lineValue === "number" && Number.isInteger(lineValue) ? lineValue : undefined;
+  return { file, line };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

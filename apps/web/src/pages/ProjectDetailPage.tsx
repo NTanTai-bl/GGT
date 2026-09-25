@@ -10,6 +10,7 @@ export function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [runs, setRuns] = useState<PentestRun[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function refresh() {
     if (!id) return;
@@ -19,10 +20,14 @@ export function ProjectDetailPage() {
   }
 
   useEffect(() => {
-    refresh();
+    setLoadError(null);
+    refresh().catch((err) => setLoadError(err instanceof Error ? err.message : "Failed to load project"));
   }, [id]);
 
+  if (loadError) return <div className="error-banner">{loadError}</div>;
   if (!project) return <p>Loading...</p>;
+
+  const canManageTargets = Boolean(user && can(user.role, "TARGET_MANAGE"));
 
   return (
     <div>
@@ -110,7 +115,16 @@ export function ProjectDetailPage() {
           )}
         </div>
 
-        <AddTargetForm projectId={project.id} onCreated={refresh} error={error} setError={setError} />
+        {canManageTargets && (
+          <AddTargetForm
+            projectId={project.id}
+            onCreated={() => {
+              refresh().catch((err) => setError(err instanceof Error ? err.message : "Failed to reload project"));
+            }}
+            error={error}
+            setError={setError}
+          />
+        )}
       </div>
     </div>
   );

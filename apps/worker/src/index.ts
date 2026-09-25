@@ -1,5 +1,6 @@
 import { createSequelize, initModels } from "@pentest/database";
 import { loadLlmConfigFromEnv, StrixPentestEngine } from "@pentest/strix";
+import { createAiReviewer, loadReviewerConfigFromEnv, type ReviewerRuntime } from "@pentest/reviewer";
 import { logger } from "./logger";
 import { runConsumerLoop } from "./consumer";
 
@@ -40,6 +41,18 @@ async function main(): Promise<void> {
     },
     onFinish: (event) => logger.info(event, "Strix process exited"),
   });
+  const reviewerConfig = loadReviewerConfigFromEnv();
+  const reviewerRuntime: ReviewerRuntime | undefined = reviewerConfig.enabled
+    ? { config: reviewerConfig, reviewer: createAiReviewer(reviewerConfig) }
+    : undefined;
+  logger.info(
+    {
+      aiReviewEnabled: reviewerConfig.enabled,
+      aiReviewProvider: reviewerConfig.enabled ? reviewerConfig.provider : undefined,
+      aiReviewModel: reviewerConfig.enabled ? reviewerConfig.model : undefined,
+    },
+    "AI reviewer configuration loaded"
+  );
   const signal = { stopped: false };
 
   process.on("SIGTERM", () => {
@@ -50,7 +63,7 @@ async function main(): Promise<void> {
     signal.stopped = true;
   });
 
-  await runConsumerLoop(engine, signal);
+  await runConsumerLoop(engine, signal, reviewerRuntime);
 }
 
 main().catch((err) => {

@@ -72,4 +72,34 @@ describe("normalizeFinding", () => {
     expect(result.title).toBe("Explicit title wins");
     expect(result.description).toBe("Explicit description");
   });
+  it("truncates values that exceed the pentest_findings column sizes", () => {
+    const normalized = normalizeFinding({
+      title: "T".repeat(900),
+      category: "C".repeat(300),
+      cwe: "CWE-79 Improper Neutralization of Input",
+      method: "PROPFIND-EXTENDED",
+      endpoint: `https://example.internal/${"a".repeat(700)}`,
+    });
+    expect(normalized.title.length).toBeLessThanOrEqual(500);
+    expect(normalized.category.length).toBeLessThanOrEqual(200);
+    expect(normalized.cwe!.length).toBeLessThanOrEqual(20);
+    expect(normalized.method!.length).toBeLessThanOrEqual(10);
+    expect(normalized.endpoint!.length).toBeLessThanOrEqual(500);
+  });
+
+  it("maps Strix vulnerability-report fields (code_locations, poc, remediation)", () => {
+    const normalized = normalizeFinding({
+      title: "SQL injection",
+      severity: "critical",
+      code_locations: [{ file: "src/db.ts", start_line: 42, snippet: "query(x)" }],
+      poc_description: "curl -d id=1' ...",
+      remediation_steps: "Use parameterized queries",
+      technical_analysis: "User input reaches query()",
+    });
+    expect(normalized.sourceFile).toBe("src/db.ts");
+    expect(normalized.sourceLine).toBe(42);
+    expect(normalized.poc).toBe("curl -d id=1' ...");
+    expect(normalized.recommendation).toBe("Use parameterized queries");
+    expect(normalized.evidence).toBe("User input reaches query()");
+  });
 });

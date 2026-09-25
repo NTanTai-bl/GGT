@@ -23,6 +23,25 @@ export const updateProjectSchema = z.object({
 });
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
+/**
+ * Branch and commit reach `git` as argv (apps/worker/src/git-source.ts), so
+ * only plain ref names and hex SHAs are accepted: no leading "-" (option
+ * injection), no "..", no whitespace or shell/ref metacharacters.
+ */
+export const GIT_BRANCH_PATTERN = /^(?!-)(?!.*\.\.)(?!.*\/\/)(?!.*\/$)[A-Za-z0-9._/-]+$/;
+export const GIT_COMMIT_SHA_PATTERN = /^[0-9a-fA-F]{7,40}$/;
+
+const branchField = z
+  .string()
+  .trim()
+  .max(200)
+  .refine((value) => value === "" || GIT_BRANCH_PATTERN.test(value), "branch must be a plain git branch name");
+const commitShaField = z
+  .string()
+  .trim()
+  .max(100)
+  .refine((value) => value === "" || GIT_COMMIT_SHA_PATTERN.test(value), "commitSha must be a 7-40 character hex commit SHA");
+
 const authorizationConfirmedField = z.literal(true, {
   errorMap: () => ({
     message:
@@ -35,8 +54,8 @@ export const createTargetSchema = z
     type: z.enum(TARGET_TYPES),
     target: z.string().trim().min(1, "target is required").max(500),
     environment: z.enum(ENVIRONMENTS),
-    branch: z.string().trim().max(200).optional(),
-    commitSha: z.string().trim().max(100).optional(),
+    branch: branchField.optional(),
+    commitSha: commitShaField.optional(),
     authorizationConfirmed: authorizationConfirmedField,
   })
   .superRefine((input, ctx) => {
@@ -52,8 +71,8 @@ export type CreateTargetInput = z.infer<typeof createTargetSchema>;
 
 export const updateTargetSchema = z.object({
   environment: z.enum(ENVIRONMENTS).optional(),
-  branch: z.string().trim().max(200).optional(),
-  commitSha: z.string().trim().max(100).optional(),
+  branch: branchField.optional(),
+  commitSha: commitShaField.optional(),
   authorizationConfirmed: z.boolean().optional(),
 });
 export type UpdateTargetInput = z.infer<typeof updateTargetSchema>;

@@ -6,9 +6,11 @@ import { assertProjectAccess, requirePermission } from "../middleware/rbac";
 import { createProject, getProjectOrThrow, listProjects, updateProject } from "../services/project.service";
 import { createTarget, listTargets } from "../services/target.service";
 import { HttpError } from "../middleware/errorHandler";
+import { uuidParam } from "../middleware/validateParams";
 
 export const projectsRouter = Router();
 projectsRouter.use(requireAuth);
+projectsRouter.param("id", uuidParam);
 
 projectsRouter.post(
   "/",

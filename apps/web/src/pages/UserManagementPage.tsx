@@ -38,15 +38,17 @@ export function UserManagementPage() {
     api.listUserAuditLogs(selectedId).then(setAuditLogs).catch((err) => setError(messageOf(err)));
   }, [selectedId, users]);
 
-  async function run(action: () => Promise<unknown>, success: string, preferredId?: string) {
+  async function run(action: () => Promise<unknown>, success: string, preferredId?: string): Promise<boolean> {
     setError(null);
     setNotice(null);
     try {
       await action();
       await refresh(preferredId);
       setNotice(success);
+      return true;
     } catch (err) {
       setError(messageOf(err));
+      return false;
     }
   }
 
@@ -103,28 +105,38 @@ export function UserManagementPage() {
               user={selected}
               projects={projects}
               auditLogs={auditLogs}
-              onSave={(input) => selected.id === currentUser?.id && input.role !== "ADMIN"
-                ? runAndReload(() => api.updateUser(selected.id, input))
-                : run(() => api.updateUser(selected.id, input), "Account updated", selected.id)}
-              onToggle={() => selected.id === currentUser?.id && selected.isActive
-                ? runAndReload(() => api.updateUser(selected.id, { isActive: false }))
-                : run(
+              onSave={async (input) => {
+                if (selected.id === currentUser?.id && input.role !== "ADMIN") {
+                  await runAndReload(() => api.updateUser(selected.id, input));
+                } else {
+                  await run(() => api.updateUser(selected.id, input), "Account updated", selected.id);
+                }
+              }}
+              onToggle={async () => {
+                if (selected.id === currentUser?.id && selected.isActive) {
+                  await runAndReload(() => api.updateUser(selected.id, { isActive: false }));
+                } else {
+                  await run(
                     () => api.updateUser(selected.id, { isActive: !selected.isActive }),
                     selected.isActive ? "Account locked" : "Account unlocked",
                     selected.id
-                  )}
-              onResetPassword={(password) => selected.id === currentUser?.id
-                ? runAndReload(() => api.resetUserPassword(selected.id, password))
-                : run(
-                    () => api.resetUserPassword(selected.id, password),
-                    "Password reset; previous sessions have been invalidated",
-                    selected.id
-                  )}
-              onAssign={(projectIds) => run(
-                () => api.assignUserProjects(selected.id, projectIds),
-                "Project access updated",
-                selected.id
-              )}
+                  );
+                }
+              }}
+              onResetPassword={async (password) => {
+                if (selected.id === currentUser?.id) {
+                  await runAndReload(() => api.resetUserPassword(selected.id, password));
+                  return true;
+                }
+                return run(
+                  () => api.resetUserPassword(selected.id, password),
+                  "Password reset; previous sessions have been invalidated",
+                  selected.id
+                );
+              }}
+              onAssign={async (projectIds) => {
+                await run(() => api.assignUserProjects(selected.id, projectIds), "Project access updated", selected.id);
+              }}
             />
           ) : <div className="card muted">Select an account.</div>}
         </section>
@@ -133,7 +145,7 @@ export function UserManagementPage() {
   );
 }
 
-function CreateUserForm({ onCreate }: { onCreate: (input: { email: string; displayName: string; role: UserRole; password: string }) => Promise<void> }) {
+function CreateUserForm({ onCreate }: { onCreate: (input: { email: string; displayName: string; role: UserRole; password: string }) => Promise<boolean> }) {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<UserRole>("VIEWER");
@@ -141,7 +153,8 @@ function CreateUserForm({ onCreate }: { onCreate: (input: { email: string; displ
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await onCreate({ email, displayName, role, password });
+    // Keep what the admin typed if the request failed (e.g. duplicate email).
+    if (!(await onCreate({ email, displayName, role, password }))) return;
     setEmail(""); setDisplayName(""); setPassword(""); setRole("VIEWER");
   }
 
@@ -166,7 +179,7 @@ function UserEditor({ user, projects, auditLogs, onSave, onToggle, onResetPasswo
   auditLogs: UserAuditLog[];
   onSave: (input: { displayName: string; role: UserRole }) => Promise<void>;
   onToggle: () => Promise<void>;
-  onResetPassword: (password: string) => Promise<void>;
+  onResetPassword: (password: string) => Promise<boolean>;
   onAssign: (projectIds: string[]) => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState(user.displayName);
@@ -191,7 +204,7 @@ function UserEditor({ user, projects, auditLogs, onSave, onToggle, onResetPasswo
 
       <div className="card">
         <h3>Reset password</h3>
-        <form onSubmit={(event) => { event.preventDefault(); void onResetPassword(password).then(() => setPassword("")); }}>
+        <form onSubmit={(event) => { event.preventDefault(); void onResetPassword(password).then((ok) => { if (ok) setPassword(""); }); }}>
           <label>New password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={12} required /></label>
           <button type="submit">Reset password</button>
         </form>

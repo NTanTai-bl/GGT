@@ -18,9 +18,11 @@ import {
   resetUserPassword,
   updateUser,
 } from "../services/user.service";
+import { uuidParam } from "../middleware/validateParams";
 
 export const usersRouter = Router();
 usersRouter.use(requireAuth);
+usersRouter.param("id", uuidParam);
 usersRouter.use(requirePermission("USER_MANAGE"));
 
 usersRouter.get(

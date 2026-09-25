@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-sqs";
 import { pentestRequestedMessageSchema } from "@pentest/shared";
 import type { PentestEngine } from "@pentest/strix";
+import type { ReviewerRuntime } from "@pentest/reviewer";
 import { env } from "./config/env";
 import { logger } from "./logger";
 import { processPentestRequested } from "./pentest-processor";
@@ -15,11 +16,14 @@ const sqsClient = new SQSClient({
   endpoint: env.AWS_ENDPOINT_URL,
 });
 
-export async function pollOnce(engine: PentestEngine): Promise<number> {
+export async function pollOnce(engine: PentestEngine, reviewerRuntime?: ReviewerRuntime): Promise<number> {
   const response = await sqsClient.send(
     new ReceiveMessageCommand({
       QueueUrl: env.SQS_QUEUE_URL,
-      MaxNumberOfMessages: 5,
+      // Messages are processed one at a time and a scan can take up to the
+      // visibility timeout. Receiving a batch would keep the others invisible
+      // (and their receipt handles expiring) while the first one runs.
+      MaxNumberOfMessages: 1,
       WaitTimeSeconds: 10,
       VisibilityTimeout: env.WORKER_VISIBILITY_TIMEOUT_SEC,
     })
@@ -27,12 +31,12 @@ export async function pollOnce(engine: PentestEngine): Promise<number> {
 
   const messages = response.Messages ?? [];
   for (const message of messages) {
-    await handleMessage(message, engine);
+    await handleMessage(message, engine, reviewerRuntime);
   }
   return messages.length;
 }
 
-async function handleMessage(message: Message, engine: PentestEngine): Promise<void> {
+async function handleMessage(message: Message, engine: PentestEngine, reviewerRuntime?: ReviewerRuntime): Promise<void> {
   if (!message.Body || !message.ReceiptHandle) return;
 
   let parsed;
@@ -46,7 +50,7 @@ async function handleMessage(message: Message, engine: PentestEngine): Promise<v
   }
 
   try {
-    await processPentestRequested(parsed.runId, engine);
+    await processPentestRequested(parsed.runId, engine, reviewerRuntime);
     await deleteMessage(message.ReceiptHandle);
   } catch (err) {
     // Leave the message in the queue — it becomes visible again after the
@@ -62,10 +66,14 @@ async function deleteMessage(receiptHandle: string): Promise<void> {
   );
 }
 
-export async function runConsumerLoop(engine: PentestEngine, signal: { stopped: boolean }): Promise<void> {
+export async function runConsumerLoop(
+  engine: PentestEngine,
+  signal: { stopped: boolean },
+  reviewerRuntime?: ReviewerRuntime
+): Promise<void> {
   while (!signal.stopped) {
     try {
-      const received = await pollOnce(engine);
+      const received = await pollOnce(engine, reviewerRuntime);
       if (received === 0) {
         await sleep(env.WORKER_POLL_INTERVAL_MS);
       }

@@ -4,9 +4,11 @@ import { asyncHandler } from "./asyncHandler";
 import { requireAuth } from "../middleware/auth";
 import { assertProjectAccess, requirePermission } from "../middleware/rbac";
 import { deleteTarget, getTargetOrThrow, updateTarget } from "../services/target.service";
+import { uuidParam } from "../middleware/validateParams";
 
 export const targetsRouter = Router();
 targetsRouter.use(requireAuth);
+targetsRouter.param("id", uuidParam);
 targetsRouter.use(requirePermission("TARGET_MANAGE"));
 
 targetsRouter.patch(

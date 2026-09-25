@@ -8,8 +8,8 @@ COPY packages ./packages
 COPY apps/api ./apps/api
 
 RUN npm install --workspaces --include-workspace-root=false --no-audit --no-fund
-RUN npm run build --workspace @pentest/shared
-RUN npm run build --workspace @pentest/database
+# @pentest/shared and @pentest/database have no build step: their package
+# entrypoints are TypeScript sources (same model as apps/worker/Dockerfile).
 RUN npm run build --workspace @pentest/api
 
 FROM node:20-alpine
@@ -22,5 +22,9 @@ COPY --from=build /repo/packages ./packages
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
 
+# Internal workspace packages expose TypeScript sources; register ts-node for
+# those imports while the API itself runs from compiled JavaScript.
+ENV TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"node"}'
+
 EXPOSE 4000
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["node", "-r", "ts-node/register/transpile-only", "apps/api/dist/index.js"]

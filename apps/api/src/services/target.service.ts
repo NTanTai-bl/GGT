@@ -1,5 +1,5 @@
-import { recordAuditLog, Target } from "@pentest/database";
-import type { UpdateTargetInput, CreateTargetInput } from "@pentest/shared";
+import { recordAuditLog, Run, RunTarget, Target } from "@pentest/database";
+import { ACTIVE_RUN_STATUSES, type UpdateTargetInput, type CreateTargetInput } from "@pentest/shared";
 import { HttpError } from "../middleware/errorHandler";
 import { getProjectOrThrow } from "./project.service";
 
@@ -80,6 +80,15 @@ export async function updateTarget(targetId: string, input: UpdateTargetInput, a
 
 export async function deleteTarget(targetId: string, actorId: string): Promise<void> {
   const target = await getTargetOrThrow(targetId);
+  // Deleting a target cascades to pentest_run_targets. Doing that under an
+  // active run would leave the worker with a run that has no targets.
+  const activeRun = await RunTarget.findOne({
+    where: { targetId },
+    include: [{ model: Run, as: "run", where: { status: [...ACTIVE_RUN_STATUSES] } }],
+  });
+  if (activeRun) {
+    throw new HttpError(409, "This target is used by an active pentest run; cancel or wait for it before deleting");
+  }
   await target.destroy();
   await recordAuditLog({ actorId, action: "TARGET_DELETED", entityType: "target", entityId: targetId });
 }
